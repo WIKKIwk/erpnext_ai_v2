@@ -754,9 +754,9 @@ erpnext_ai.pages.AIChat = class AIChat {
 			})
 			.join("");
 
-		const sendIcon = frappe.utils.icon("send", "sm");
-		const summaryIcon = frappe.utils.icon("bar-chart-2", "sm");
-		const newIcon = frappe.utils.icon("edit-3", "sm");
+		const sendIcon = frappe.utils.icon("send", "sm", "stroke", ["icon-md", "ai-icon"]);
+		const summaryIcon = frappe.utils.icon("bar-chart-2", "sm", "stroke", ["icon-md", "ai-icon"]);
+		const newIcon = frappe.utils.icon("edit-3", "sm", "stroke", ["icon-md", "ai-icon"]);
 
 		this.$page = $('<div class="ai-chat-container"></div>').appendTo(this.page.body);
 

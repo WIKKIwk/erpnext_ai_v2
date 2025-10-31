@@ -595,48 +595,27 @@ erpnext_ai.pages.AIChat = class AIChat {
 				border-color: transparent;
 			}
 
-			.ai-chat-actions {
+			.ai-chat-meta {
 				display: flex;
-				justify-content: flex-start;
+				justify-content: flex-end;
 				align-items: center;
-				flex-wrap: wrap;
-				gap: 1rem;
-			}
-
-			.ai-chat-controls {
-				display: flex;
-				align-items: center;
-				gap: 1rem;
+				gap: 0.75rem;
 				flex-wrap: wrap;
 				font-size: 0.85rem;
 				color: var(--ai-chat-muted);
+				margin-bottom: 0.6rem;
 			}
 
-			.ai-chat-controls label {
+			.ai-chat-meta label {
 				display: inline-flex;
 				align-items: center;
 				gap: 0.5rem;
 				margin: 0;
 			}
 
-			.ai-chat-controls input[type="checkbox"] {
+			.ai-chat-meta input[type="checkbox"] {
 				width: 16px;
 				height: 16px;
-			}
-
-			.ai-chat-controls select {
-				background: transparent;
-				border-radius: 999px;
-				border: 1px solid var(--ai-chat-border);
-				padding: 0.3rem 1.25rem 0.3rem 0.75rem;
-				font-size: 0.85rem;
-				color: var(--ai-chat-text);
-			}
-
-			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-controls select {
-				border-color: #4a4c6a;
-				color: var(--ai-chat-text);
-				background: rgba(64, 65, 79, 0.65);
 			}
 
 			.ai-chat-input-footer {
@@ -658,6 +637,10 @@ erpnext_ai.pages.AIChat = class AIChat {
 				.ai-chat-toolbar .btn-round {
 					width: 38px;
 					height: 38px;
+				}
+
+				.ai-chat-meta {
+					justify-content: space-between;
 				}
 
 				.ai-chat-container.chat-active {
@@ -833,24 +816,17 @@ erpnext_ai.pages.AIChat = class AIChat {
 				<div class="ai-chat-feed"></div>
 				<div class="ai-chat-input">
 					<div class="ai-chat-input-shell">
+						<div class="ai-chat-meta">
+							<label class="checkbox">
+								<input type="checkbox" class="ai-include-context" checked />
+								<span>${__("Include business context")}</span>
+							</label>
+						</div>
 						<textarea 
 							class="form-control" 
 							placeholder="${__("Ask about revenue, inventory, or any business insight...")}"
 							rows="3"
 						></textarea>
-						<div class="ai-chat-actions">
-							<div class="ai-chat-controls">
-								<label class="checkbox">
-									<input type="checkbox" class="ai-include-context" checked />
-									<span>${__("Include business context")}</span>
-								</label>
-								<select class="form-control ai-days">
-									<option value="7">7 ${__("days")}</option>
-									<option value="30" selected>30 ${__("days")}</option>
-									<option value="90">90 ${__("days")}</option>
-								</select>
-							</div>
-						</div>
 					</div>
 					<div class="ai-chat-input-footer">
 						${__("ERPNext AI can make mistakes. Verify critical insights before acting.")}

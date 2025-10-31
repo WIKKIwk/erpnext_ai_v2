@@ -508,15 +508,22 @@ erpnext_ai.pages.AIChat = class AIChat {
 
 			.ai-chat-input textarea {
 				width: 100%;
-				min-height: 72px;
+				min-height: clamp(100px, 20vh, 180px);
+				max-height: clamp(220px, 35vh, 360px);
 				resize: vertical;
 				border-radius: 0;
 				padding: 0;
-				font-size: 1rem;
+				font-size: 0.95rem;
+				line-height: 1.55;
 				background: transparent;
 				border: none;
 				color: var(--ai-chat-text);
 				font-family: inherit;
+			}
+
+			.ai-chat-input textarea::placeholder {
+				color: var(--ai-chat-muted);
+				opacity: 0.85;
 			}
 
 			.ai-chat-input textarea:focus {

@@ -9,6 +9,7 @@
  "doctype": "DocType",
  "editable_grid": 0,
  "engine": "InnoDB",
+ "issingle": 1,
  "field_order": [
   "api_provider",
   "openai_model",
@@ -62,7 +63,7 @@
  {
   "amend": 0,
   "cancel": 0,
-  "create": 1,
+  "create": 0,
   "delete": 0,
   "email": 1,
   "export": 1,

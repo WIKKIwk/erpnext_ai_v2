@@ -5,6 +5,15 @@ requires = [
 ]
 build-backend = "setuptools.build_meta:__legacy__"
 
+# Minimal project metadata so setuptools build backend is happy
+[project]
+name = "erpnext_ai"
+version = "1.0.0"
+description = "AI assistant and reporting for ERPNext administrators"
+readme = "README.md"
+requires-python = ">=3.10"
+dynamic = ["dependencies"]
+
 # These dependencies are only installed when developer mode is enabled
 [tool.bench.dev-dependencies]
 # package_name = "~=1.1.0"
@@ -47,3 +56,6 @@ docstring-code-format = true
 
 [tool.setuptools.packages.find]
 include = ["erpnext_ai*"]
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}

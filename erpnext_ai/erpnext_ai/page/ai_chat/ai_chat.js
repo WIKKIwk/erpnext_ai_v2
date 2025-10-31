@@ -547,9 +547,16 @@ erpnext_ai.pages.AIChat = class AIChat {
 				transition: transform 0.15s ease, box-shadow 0.15s ease;
 			}
 
+			.ai-chat-toolbar .btn-round .ai-icon,
 			.ai-chat-toolbar .btn-round svg {
-				width: 16px;
-				height: 16px;
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				width: 18px;
+				height: 18px;
+				stroke: currentColor;
+				fill: none;
+				stroke-width: 2;
 			}
 
 			.ai-chat-toolbar .btn-round.btn-primary {
@@ -558,9 +565,11 @@ erpnext_ai.pages.AIChat = class AIChat {
 				border-color: var(--ai-chat-accent);
 			}
 
-			.ai-chat-toolbar .btn-round:hover {
+			.ai-chat-toolbar .btn-round:hover,
+			.ai-chat-toolbar .btn-round:focus {
 				transform: translateY(-1px);
 				box-shadow: 0 8px 20px rgba(58, 61, 66, 0.24);
+				outline: none;
 			}
 
 			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-toolbar .btn-round {
@@ -754,9 +763,10 @@ erpnext_ai.pages.AIChat = class AIChat {
 			})
 			.join("");
 
-		const sendIcon = frappe.utils.icon("send", "sm", "stroke", ["icon-md", "ai-icon"]);
-		const summaryIcon = frappe.utils.icon("bar-chart-2", "sm", "stroke", ["icon-md", "ai-icon"]);
-		const newIcon = frappe.utils.icon("edit-3", "sm", "stroke", ["icon-md", "ai-icon"]);
+		const iconOptions = { class: ["icon-md", "ai-icon"] };
+		const sendIcon = frappe.utils.icon("send", "sm", "stroke", iconOptions);
+		const summaryIcon = frappe.utils.icon("bar-chart-2", "sm", "stroke", iconOptions);
+		const newIcon = frappe.utils.icon("edit-3", "sm", "stroke", iconOptions);
 
 		this.$page = $('<div class="ai-chat-container"></div>').appendTo(this.page.body);
 

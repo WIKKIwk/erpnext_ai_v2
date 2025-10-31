@@ -11,5 +11,5 @@ def get_data():
 			"icon": "octicon octoface",
 			"type": "module",
 			"description": "Chat with GPT-5 Mini, request ERPNext summaries, and manage AI settings.",
-		}
- ]
+		},
+	]

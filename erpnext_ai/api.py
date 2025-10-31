@@ -4,9 +4,9 @@ from typing import Any, Dict, Optional
 
 import frappe
 
-from erpnext_ai.services.admin_summary import collect_admin_context
-from erpnext_ai.services import chat
-from erpnext_ai.services.report_runner import generate_admin_report
+from erpnext_ai.erpnext_ai.services.admin_summary import collect_admin_context
+from erpnext_ai.erpnext_ai.services import chat
+from erpnext_ai.erpnext_ai.services.report_runner import generate_admin_report
 
 
 @frappe.whitelist()

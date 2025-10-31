@@ -1,0 +1,77 @@
+{
+ "actions": [],
+ "allow_import": 0,
+ "allow_rename": 0,
+ "creation": "2024-10-13 00:00:00.000000",
+ "docstatus": 0,
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "role",
+  "content",
+  "context_json",
+  "token_usage"
+ ],
+ "fields": [
+  {
+   "fieldname": "role",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Role",
+   "options": "system\nuser\nassistant",
+   "reqd": 1
+  },
+  {
+   "fieldname": "content",
+   "fieldtype": "Text Editor",
+   "in_list_view": 1,
+   "label": "Content",
+   "reqd": 1
+  },
+  {
+   "fieldname": "context_json",
+   "fieldtype": "Code",
+   "label": "Context Snapshot",
+   "options": "JSON"
+  },
+  {
+   "fieldname": "token_usage",
+   "fieldtype": "Int",
+   "label": "Token Usage"
+  }
+ ],
+ "has_web_view": 0,
+ "hide_toolbar": 0,
+ "index_web_pages_for_search": 0,
+ "inline": 0,
+ "is_submittable": 0,
+ "is_tree": 0,
+ "links": [],
+ "max_attachments": 0,
+ "modified": "2024-10-13 00:00:00.000000",
+ "module": "ERPNext AI",
+ "name": "AI Message",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 0,
+   "delete": 0,
+   "email": 0,
+   "export": 0,
+   "print": 0,
+   "read": 0,
+   "role": "System Manager",
+   "share": 0,
+   "write": 0
+  }
+ ],
+ "quick_entry": 0,
+ "show_name_in_global_search": 0,
+ "sort_field": "creation",
+ "sort_order": "ASC",
+ "states": [],
+ "track_changes": 1,
+ "istable": 1
+}
+

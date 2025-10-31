@@ -1,0 +1,23 @@
+{
+ "creation": "2024-10-13 00:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Page",
+ "icon": "octicon octoface",
+ "idx": 0,
+ "modified": "2024-10-13 00:00:00.000000",
+ "module": "ERPNext AI",
+ "name": "ai-command-center",
+ "owner": "Administrator",
+ "page_name": "ai-command-center",
+ "roles": [
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "AI Manager"
+  }
+ ],
+ "standard": "Yes",
+ "title": "AI Command Center"
+}
+

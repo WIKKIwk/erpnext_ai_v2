@@ -7,10 +7,7 @@ frappe.pages["ai-chat"].on_page_load = function (wrapper) {
 		single_column: true,
 	});
 
-	const chat = new erpnext_ai.pages.AIChat(page);
-
-	page.set_primary_action(__("Send"), () => chat.sendMessage(), "send");
-	page.set_secondary_action(__("New Chat"), () => chat.startNewConversation(true), "plus");
+	new erpnext_ai.pages.AIChat(page);
 };
 
 erpnext_ai.pages.AIChat = class AIChat {
@@ -527,9 +524,60 @@ erpnext_ai.pages.AIChat = class AIChat {
 				box-shadow: none;
 			}
 
+			.ai-chat-toolbar {
+				display: flex;
+				justify-content: flex-end;
+				align-items: center;
+				gap: 0.75rem;
+				margin-bottom: 0.5rem;
+			}
+
+			.ai-chat-toolbar .btn-round {
+				width: 40px;
+				height: 40px;
+				border-radius: 50%;
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				padding: 0;
+				border: 1px solid var(--ai-chat-border);
+				background: var(--ai-chat-input-bg);
+				color: var(--ai-chat-text);
+				box-shadow: 0 6px 18px rgba(58, 61, 66, 0.18);
+				transition: transform 0.15s ease, box-shadow 0.15s ease;
+			}
+
+			.ai-chat-toolbar .btn-round svg {
+				width: 16px;
+				height: 16px;
+			}
+
+			.ai-chat-toolbar .btn-round.btn-primary {
+				background: var(--ai-chat-accent);
+				color: var(--ai-chat-button-text);
+				border-color: var(--ai-chat-accent);
+			}
+
+			.ai-chat-toolbar .btn-round:hover {
+				transform: translateY(-1px);
+				box-shadow: 0 8px 20px rgba(58, 61, 66, 0.24);
+			}
+
+			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-toolbar .btn-round {
+				background: rgba(64, 65, 79, 0.65);
+				border-color: #4a4c6a;
+				color: var(--ai-chat-text);
+			}
+
+			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-toolbar .btn-round.btn-primary {
+				background: var(--ai-chat-accent);
+				color: var(--ai-chat-button-text);
+				border-color: transparent;
+			}
+
 			.ai-chat-actions {
 				display: flex;
-				justify-content: space-between;
+				justify-content: flex-start;
 				align-items: center;
 				flex-wrap: wrap;
 				gap: 1rem;
@@ -571,43 +619,6 @@ erpnext_ai.pages.AIChat = class AIChat {
 				background: rgba(64, 65, 79, 0.65);
 			}
 
-			.ai-chat-buttons {
-				display: flex;
-				gap: 0.6rem;
-				align-items: center;
-				flex-wrap: wrap;
-			}
-
-			.ai-chat-buttons .btn {
-				border-radius: 999px;
-				font-weight: 500;
-				padding: 0.6rem 1.4rem;
-			}
-
-			.ai-chat-buttons .btn-default {
-				background: transparent;
-				border: 1px solid var(--ai-chat-border);
-				color: var(--ai-chat-text);
-			}
-
-			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-buttons .btn-default {
-				border-color: #4a4c6a;
-				color: var(--ai-chat-text);
-				background: rgba(15, 16, 25, 0.35);
-			}
-
-			.ai-chat-buttons .btn-default:hover {
-				border-color: rgba(58, 61, 66, 0.5);
-				color: var(--ai-chat-accent);
-			}
-
-			.ai-chat-buttons .btn-primary {
-				background: var(--ai-chat-accent);
-				border-color: var(--ai-chat-accent);
-				color: var(--ai-chat-button-text);
-				box-shadow: 0 6px 18px rgba(58, 61, 66, 0.28);
-			}
-
 			.ai-chat-input-footer {
 				text-align: center;
 				font-size: 0.76rem;
@@ -617,6 +628,16 @@ erpnext_ai.pages.AIChat = class AIChat {
 			@media (max-width: 768px) {
 				.ai-chat-container {
 					padding: 1.5rem 1rem 2.5rem;
+				}
+
+				.ai-chat-toolbar {
+					justify-content: space-between;
+					gap: 0.5rem;
+				}
+
+				.ai-chat-toolbar .btn-round {
+					width: 38px;
+					height: 38px;
 				}
 
 				.ai-chat-container.chat-active {
@@ -733,6 +754,10 @@ erpnext_ai.pages.AIChat = class AIChat {
 			})
 			.join("");
 
+		const sendIcon = frappe.utils.icon("send", "sm");
+		const summaryIcon = frappe.utils.icon("bar-chart-2", "sm");
+		const newIcon = frappe.utils.icon("edit-3", "sm");
+
 		this.$page = $('<div class="ai-chat-container"></div>').appendTo(this.page.body);
 
 		this.$hero = $(`
@@ -753,6 +778,20 @@ erpnext_ai.pages.AIChat = class AIChat {
 				</div>
 			</div>
 		`).appendTo(this.$page);
+
+		this.$toolbar = $(
+			`<div class="ai-chat-toolbar">
+				<button type="button" class="btn btn-round btn-default btn-summary" title="${__("Generate Business Summary")}">
+					${summaryIcon}
+				</button>
+				<button type="button" class="btn btn-round btn-default btn-new" title="${__("Start New Chat")}">
+					${newIcon}
+				</button>
+				<button type="button" class="btn btn-round btn-primary btn-send" title="${__("Send Message")}">
+					${sendIcon}
+				</button>
+			</div>`
+		).appendTo(this.$page);
 
 		this.$container = $(`
 			<div class="ai-chat-wrapper">
@@ -776,17 +815,6 @@ erpnext_ai.pages.AIChat = class AIChat {
 									<option value="90">90 ${__("days")}</option>
 								</select>
 							</div>
-							<div class="ai-chat-buttons">
-								<button class="btn btn-default btn-summary">
-									${__("Summary")}
-								</button>
-								<button class="btn btn-default btn-new">
-									${__("New Chat")}
-								</button>
-								<button class="btn btn-primary btn-send">
-									${__("Send Message")}
-								</button>
-							</div>
 						</div>
 					</div>
 					<div class="ai-chat-input-footer">
@@ -804,9 +832,9 @@ erpnext_ai.pages.AIChat = class AIChat {
 		this.$textarea = this.$container.find("textarea");
 		this.$includeContext = this.$container.find(".ai-include-context");
 		this.$days = this.$container.find(".ai-days");
-		this.$sendBtn = this.$container.find(".btn-send");
-		this.$newBtn = this.$container.find(".btn-new");
-		this.$summaryBtn = this.$container.find(".btn-summary");
+		this.$sendBtn = this.$page.find(".btn-send");
+		this.$newBtn = this.$page.find(".btn-new");
+		this.$summaryBtn = this.$page.find(".btn-summary");
 
 		this._bindEvents();
 	}

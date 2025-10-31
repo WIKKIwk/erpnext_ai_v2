@@ -557,6 +557,8 @@ erpnext_ai.pages.AIChat = class AIChat {
 				stroke: currentColor;
 				fill: none;
 				stroke-width: 2;
+				stroke-linecap: round;
+				stroke-linejoin: round;
 			}
 
 			.ai-chat-toolbar .btn-round.btn-primary {
@@ -763,10 +765,24 @@ erpnext_ai.pages.AIChat = class AIChat {
 			})
 			.join("");
 
-		const iconOptions = { class: ["icon-md", "ai-icon"] };
-		const sendIcon = frappe.utils.icon("send", "sm", "stroke", iconOptions);
-		const summaryIcon = frappe.utils.icon("bar-chart-2", "sm", "stroke", iconOptions);
-		const newIcon = frappe.utils.icon("edit-3", "sm", "stroke", iconOptions);
+
+		const summaryIcon = `
+			<svg class="ai-icon" viewBox="0 0 24 24" aria-hidden="true">
+				<line x1="18" y1="20" x2="18" y2="10"></line>
+				<line x1="12" y1="20" x2="12" y2="4"></line>
+				<line x1="6" y1="20" x2="6" y2="14"></line>
+				<line x1="2" y1="20" x2="22" y2="20"></line>
+			</svg>`;
+		const newIcon = `
+			<svg class="ai-icon" viewBox="0 0 24 24" aria-hidden="true">
+				<path d="M12 20h9"></path>
+				<path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"></path>
+			</svg>`;
+		const sendIcon = `
+			<svg class="ai-icon" viewBox="0 0 24 24" aria-hidden="true">
+				<line x1="22" y1="2" x2="11" y2="13"></line>
+				<polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+			</svg>`;
 
 		this.$page = $('<div class="ai-chat-container"></div>').appendTo(this.page.body);
 

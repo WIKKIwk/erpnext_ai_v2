@@ -17,6 +17,12 @@ erpnext_ai.pages.AIChat = class AIChat {
 		this.days = 30;
 		this.includeContext = true;
 		this.isSending = false;
+		this.isIdle = false;
+		this.idleDelay = 8000;
+		this.idleTimer = null;
+		this.idleVideoReady = false;
+		this.idleVideoPrimed = false;
+		this.$idleVideo = null;
 		this.$typingIndicator = null;
 		this.$pendingUserEcho = null;
 
@@ -45,21 +51,21 @@ erpnext_ai.pages.AIChat = class AIChat {
 			}
 
 			html:is([data-theme="dark"], [data-theme-mode="dark"]) {
-				--ai-chat-app-bg: #343541;
-				--ai-chat-feed-bg: #343541;
-				--ai-chat-panel: rgba(64, 65, 79, 0.8);
-				--ai-chat-border: #565869;
-				--ai-chat-text: #ececf1;
-				--ai-chat-muted: #a1a6b4;
-				--ai-chat-assistant-bg: #444654;
-				--ai-chat-user-bg: #343541;
-				--ai-chat-user-text: #f8fafc;
-				--ai-chat-shadow: 0 -12px 32px rgba(0, 0, 0, 0.45);
-				--ai-chat-input-bg: #40414f;
-				--ai-chat-input-border: #565869;
-				--ai-chat-accent: #d1d5db;
-				--ai-chat-accent-hover: #e5e7eb;
-				--ai-chat-button-text: #111827;
+				--ai-chat-app-bg: #161616;
+				--ai-chat-feed-bg: #161616;
+				--ai-chat-panel: rgba(54, 54, 54, 0.85);
+				--ai-chat-border: #363636;
+				--ai-chat-text: #ffffff;
+				--ai-chat-muted: rgba(255, 255, 255, 0.7);
+				--ai-chat-assistant-bg: #363636;
+				--ai-chat-user-bg: #161616;
+				--ai-chat-user-text: #ffffff;
+				--ai-chat-shadow: 0 -12px 32px rgba(22, 22, 22, 0.6);
+				--ai-chat-input-bg: #161616;
+				--ai-chat-input-border: #363636;
+				--ai-chat-accent: #363636;
+				--ai-chat-accent-hover: #161616;
+				--ai-chat-button-text: #ffffff;
 			}
 
 			body[data-route="ai-chat"],
@@ -97,7 +103,7 @@ erpnext_ai.pages.AIChat = class AIChat {
 			}
 
 			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-hero {
-				background: linear-gradient(145deg, rgba(58, 61, 66, 0.28), rgba(58, 61, 66, 0));
+				background: linear-gradient(145deg, #363636, #161616);
 			}
 
 			.ai-chat-hero-icon {
@@ -116,7 +122,8 @@ erpnext_ai.pages.AIChat = class AIChat {
 			}
 
 			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-hero-icon {
-				background: rgba(58, 61, 66, 0.22);
+				background: rgba(54, 54, 54, 0.6);
+				color: #ffffff;
 			}
 
 			.ai-chat-hero h2 {
@@ -154,8 +161,8 @@ erpnext_ai.pages.AIChat = class AIChat {
 			}
 
 			html:is([data-theme="dark"], [data-theme-mode="dark"]) .hero-suggestion {
-				background: rgba(64, 65, 79, 0.75);
-				border-color: #4a4c6a;
+				background: rgba(54, 54, 54, 0.8);
+				border-color: #363636;
 				color: var(--ai-chat-text);
 			}
 
@@ -180,8 +187,8 @@ erpnext_ai.pages.AIChat = class AIChat {
 			}
 
 			html:is([data-theme="dark"], [data-theme-mode="dark"]) .hero-suggestion:hover {
-				background: rgba(64, 65, 79, 0.85);
-				border-color: rgba(58, 61, 66, 0.5);
+				background: rgba(54, 54, 54, 0.9);
+				border-color: rgba(54, 54, 54, 0.8);
 			}
 
 			.hero-actions {
@@ -203,6 +210,11 @@ erpnext_ai.pages.AIChat = class AIChat {
 				box-shadow: 0 6px 18px rgba(50, 52, 58, 0.35);
 			}
 
+			html:is([data-theme="dark"], [data-theme-mode="dark"]) .hero-actions .btn-primary,
+			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-buttons .btn-primary {
+				box-shadow: 0 6px 18px rgba(22, 22, 22, 0.45);
+			}
+
 			.hero-actions .btn-primary:hover,
 			.ai-chat-buttons .btn-primary:hover {
 				background: var(--ai-chat-accent-hover);
@@ -216,9 +228,9 @@ erpnext_ai.pages.AIChat = class AIChat {
 			}
 
 			html:is([data-theme="dark"], [data-theme-mode="dark"]) .hero-actions .btn-default {
-				border-color: #4a4c6a;
+				border-color: #363636;
 				color: var(--ai-chat-text);
-				background: rgba(15, 16, 25, 0.35);
+				background: rgba(22, 22, 22, 0.35);
 			}
 
 			.ai-chat-hero.hidden {
@@ -244,16 +256,18 @@ erpnext_ai.pages.AIChat = class AIChat {
 			}
 
 			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-wrapper {
-				border-color: #4a4c6a;
+				border-color: #363636;
 			}
 
 			.ai-chat-feed {
 				flex: 1;
 				overflow-y: auto;
+				overflow-x: hidden;
 				padding: 1.5rem 0 2rem;
 				display: flex;
 				flex-direction: column;
 				background: var(--ai-chat-feed-bg);
+				position: relative;
 				scrollbar-width: thin;
 				scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
 			}
@@ -271,6 +285,31 @@ erpnext_ai.pages.AIChat = class AIChat {
 				border-radius: 999px;
 			}
 
+			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-feed {
+				scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+			}
+
+			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-feed::-webkit-scrollbar-thumb {
+				background: rgba(255, 255, 255, 0.25);
+			}
+
+			.ai-chat-idle-video {
+				position: absolute;
+				inset: 0;
+				width: 100%;
+				height: 100%;
+				object-fit: cover;
+				opacity: 0;
+				pointer-events: none;
+				transition: opacity 0.6s ease;
+				filter: saturate(0.7) brightness(0.6);
+				z-index: 0;
+			}
+
+			.ai-chat-wrapper.is-idle .ai-chat-idle-video {
+				opacity: 0.5;
+			}
+
 			.ai-chat-feed::after {
 				content: "";
 				height: 1rem;
@@ -279,6 +318,16 @@ erpnext_ai.pages.AIChat = class AIChat {
 
 			.ai-chat-message {
 				padding: 0 1.75rem;
+				position: relative;
+				z-index: 1;
+			}
+
+			.ai-chat-message.is-entering {
+				animation: ai-chat-message-in 0.36s ease forwards;
+			}
+
+			.ai-chat-message.is-entering .ai-chat-bubble {
+				animation: ai-chat-bubble-in 0.36s ease forwards;
 			}
 
 			.ai-chat-row {
@@ -290,7 +339,7 @@ erpnext_ai.pages.AIChat = class AIChat {
 			}
 
 			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-row {
-				border-color: rgba(86, 88, 105, 0.45);
+				border-color: rgba(54, 54, 54, 0.6);
 			}
 
 			.ai-chat-row:last-child {
@@ -318,6 +367,16 @@ erpnext_ai.pages.AIChat = class AIChat {
 
 			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-avatar {
 				box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+				background: linear-gradient(135deg, #161616, #363636);
+			}
+
+			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-avatar.assistant {
+				background: linear-gradient(140deg, #363636, #161616);
+				box-shadow: 0 8px 20px rgba(22, 22, 22, 0.5);
+			}
+
+			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-avatar.user {
+				background: linear-gradient(145deg, #161616, #363636);
 			}
 
 			.ai-chat-avatar.assistant {
@@ -358,7 +417,7 @@ erpnext_ai.pages.AIChat = class AIChat {
 			}
 
 			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-bubble {
-				background: rgba(64, 65, 79, 0.65);
+				background: rgba(54, 54, 54, 0.75);
 			}
 
 			.ai-chat-bubble.assistant {
@@ -367,7 +426,7 @@ erpnext_ai.pages.AIChat = class AIChat {
 			}
 
 			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-bubble.assistant {
-				background: #444654;
+				background: #363636;
 			}
 
 			.ai-chat-bubble.user {
@@ -376,9 +435,9 @@ erpnext_ai.pages.AIChat = class AIChat {
 			}
 
 			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-bubble.user {
-				background: #343541;
+				background: #161616;
 				color: var(--ai-chat-text);
-				box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+				box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 			}
 
 			.ai-chat-bubble.system {
@@ -424,9 +483,9 @@ erpnext_ai.pages.AIChat = class AIChat {
 			}
 
 			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-bubble.error {
-				background: #7f1d1d;
-				border-color: #991b1b;
-				color: #fca5a5;
+				background: #161616;
+				border-color: #363636;
+				color: #ffffff;
 			}
 
 			@keyframes ai-chat-pulse {
@@ -437,6 +496,40 @@ erpnext_ai.pages.AIChat = class AIChat {
 				40% {
 					transform: scale(1);
 					opacity: 1;
+				}
+			}
+
+			@keyframes ai-chat-message-in {
+				from {
+					transform: translateY(8px);
+					opacity: 0;
+				}
+				to {
+					transform: translateY(0);
+					opacity: 1;
+				}
+			}
+
+			@keyframes ai-chat-bubble-in {
+				from {
+					transform: translateY(12px) scale(0.98);
+					opacity: 0;
+				}
+				to {
+					transform: translateY(0) scale(1);
+					opacity: 1;
+				}
+			}
+
+			@keyframes ai-chat-button-press {
+				0% {
+					transform: scale(1);
+				}
+				40% {
+					transform: scale(0.9);
+				}
+				100% {
+					transform: scale(1);
 				}
 			}
 
@@ -457,6 +550,10 @@ erpnext_ai.pages.AIChat = class AIChat {
 				font-size: 0.85rem;
 			}
 
+			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-context summary {
+				color: var(--ai-chat-text);
+			}
+
 			.ai-chat-context pre {
 				margin-top: 0.5rem;
 				padding: 1rem;
@@ -467,17 +564,17 @@ erpnext_ai.pages.AIChat = class AIChat {
 			}
 
 			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-context pre {
-				background: rgba(255, 255, 255, 0.05);
-				color: #f8fafc;
+				background: rgba(54, 54, 54, 0.75);
+				color: #ffffff;
 			}
 
 			.ai-chat-input {
-				padding: 1.75rem clamp(1.5rem, 3vw, 2rem) 2rem;
+				padding: 1.25rem clamp(1.25rem, 3vw, 1.75rem) 1.5rem;
 				border-top: 1px solid var(--ai-chat-border);
 				background: var(--ai-chat-feed-bg);
 				display: flex;
 				flex-direction: column;
-				gap: 1rem;
+				gap: 0.75rem;
 				position: sticky;
 				bottom: 0;
 				left: 0;
@@ -488,38 +585,47 @@ erpnext_ai.pages.AIChat = class AIChat {
 			}
 
 			.ai-chat-container.chat-active .ai-chat-input {
-				padding: 1.25rem clamp(1.5rem, 3vw, 2rem) 1.5rem;
+				padding: 1rem clamp(1.25rem, 3vw, 1.75rem) 1.25rem;
 			}
 
 			.ai-chat-input-shell {
-				background: var(--ai-chat-input-bg);
-				border: 1px solid var(--ai-chat-input-border);
+				background: #161616;
+				border: 1px solid #363636;
 				border-radius: 20px;
-				padding: 1rem 1.5rem;
+				padding: 0.75rem 1rem;
 				display: flex;
 				flex-direction: column;
-				gap: 1.25rem;
-				box-shadow: var(--ai-chat-shadow);
+				gap: 0.75rem;
+				box-shadow: none;
 			}
 
 			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-input-shell {
-				box-shadow: 0 -18px 32px rgba(0, 0, 0, 0.45);
+				box-shadow: none;
+				background: #161616;
+				border-color: #363636;
+			}
+
+			.ai-chat-composer {
+				display: flex;
+				align-items: flex-end;
+				gap: 0.75rem;
 			}
 
 			.ai-chat-input textarea {
 				width: 100%;
-				min-height: 58px;
-				max-height: clamp(220px, 35vh, 360px);
-				resize: vertical;
+				height: 34px;
+				min-height: 34px;
+				max-height: 34px;
+				resize: none;
+				overflow-y: auto;
 				border-radius: 0;
 				padding: 0;
-				font-size: 0.95rem;
-				line-height: 1.55;
+				font-size: 0.92rem;
+				line-height: 1.45;
 				background: transparent;
 				border: none;
 				color: var(--ai-chat-text);
 				font-family: inherit;
-				transition: min-height 0.2s ease;
 			}
 
 			.ai-chat-input textarea::placeholder {
@@ -530,7 +636,41 @@ erpnext_ai.pages.AIChat = class AIChat {
 			.ai-chat-input textarea:focus {
 				outline: none;
 				box-shadow: none;
-				min-height: clamp(140px, 26vh, 260px);
+			}
+
+			.ai-chat-composer .btn-send {
+				width: 44px;
+				height: 44px;
+				flex-shrink: 0;
+				border-radius: 14px;
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				padding: 0;
+				transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+			}
+
+			.ai-chat-composer .btn-send .ai-icon {
+				width: 18px;
+				height: 18px;
+			}
+
+			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-composer .btn-send {
+				background: #363636;
+				border-color: #363636;
+				color: #ffffff;
+			}
+
+			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-composer .btn-send:hover,
+			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-composer .btn-send:focus {
+				box-shadow: 0 10px 24px rgba(22, 22, 22, 0.45);
+			}
+
+			.ai-chat-composer .btn-send:hover,
+			.ai-chat-composer .btn-send:focus {
+				transform: translateY(-1px);
+				box-shadow: 0 10px 24px rgba(58, 61, 66, 0.25);
+				outline: none;
 			}
 
 			.ai-chat-toolbar {
@@ -570,6 +710,19 @@ erpnext_ai.pages.AIChat = class AIChat {
 				stroke-linejoin: round;
 			}
 
+			.ai-chat-toolbar .btn-context .ai-icon-dollar {
+				font-size: 0.95rem;
+				font-weight: 600;
+				width: auto;
+				height: auto;
+			}
+
+			.ai-chat-toolbar .btn-context.is-active {
+				background: var(--ai-chat-accent);
+				color: var(--ai-chat-button-text);
+				border-color: var(--ai-chat-accent);
+			}
+
 			.ai-chat-toolbar .btn-round.btn-primary {
 				background: var(--ai-chat-accent);
 				color: var(--ai-chat-button-text);
@@ -584,15 +737,33 @@ erpnext_ai.pages.AIChat = class AIChat {
 			}
 
 			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-toolbar .btn-round {
-				background: rgba(64, 65, 79, 0.65);
-				border-color: #4a4c6a;
+				background: rgba(54, 54, 54, 0.85);
+				border-color: #363636;
 				color: var(--ai-chat-text);
+				box-shadow: 0 6px 18px rgba(22, 22, 22, 0.4);
+			}
+
+			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-toolbar .btn-context.is-active {
+				background: #363636;
+				border-color: #363636;
+				color: #ffffff;
+				box-shadow: 0 6px 18px rgba(22, 22, 22, 0.5);
 			}
 
 			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-toolbar .btn-round.btn-primary {
 				background: var(--ai-chat-accent);
 				color: var(--ai-chat-button-text);
-				border-color: transparent;
+				border-color: #363636;
+			}
+
+			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-toolbar .btn-round:hover,
+			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-toolbar .btn-round:focus {
+				box-shadow: 0 8px 20px rgba(22, 22, 22, 0.45);
+			}
+
+			.ai-chat-toolbar .btn-round.is-pressing,
+			.ai-chat-composer .btn-send.is-pressing {
+				animation: ai-chat-button-press 0.32s ease forwards;
 			}
 
 			.ai-chat-meta {
@@ -724,40 +895,8 @@ erpnext_ai.pages.AIChat = class AIChat {
 			$("<style>").attr("id", "ai-chat-styles").text(styles).appendTo("head");
 		}
 
-		const suggestionCards = [
-			{
-				message: __("Give me a quick revenue summary for the last quarter."),
-				title: __("Spot revenue trends"),
-				description: __("See how revenue moved and which products led the change."),
-			},
-			{
-				message: __("Highlight overdue receivables and the customers behind them."),
-				title: __("Track overdue invoices"),
-				description: __("Stay ahead of pending payments before they become a risk."),
-			},
-			{
-				message: __("Which products drove the highest gross margin this month?"),
-				title: __("Find top performers"),
-				description: __("See which products and teams delivered the best results."),
-			},
-		];
-
-		const suggestionsHtml = suggestionCards
-			.map((card) => {
-				const message = frappe.utils.escape_html(card.message);
-				const title = frappe.utils.escape_html(card.title);
-				const description = frappe.utils.escape_html(card.description);
-
-				return `
-					<button type="button" class="hero-suggestion" data-message="${message}">
-						<strong>${title}</strong>
-						<span>${description}</span>
-					</button>
-				`;
-			})
-			.join("");
-
-
+		const contextIcon = `
+			<span class="ai-icon ai-icon-dollar" aria-hidden="true">$</span>`;
 		const summaryIcon = `
 			<svg class="ai-icon" viewBox="0 0 24 24" aria-hidden="true">
 				<line x1="18" y1="20" x2="18" y2="10"></line>
@@ -777,56 +916,37 @@ erpnext_ai.pages.AIChat = class AIChat {
 			</svg>`;
 
 		this.$page = $('<div class="ai-chat-container"></div>').appendTo(this.page.body);
+		this.$hero = $();
 
-		this.$hero = $(`
-			<div class="ai-chat-hero">
-				<div class="ai-chat-hero-icon" aria-hidden="true">AI</div>
-				<h2>${__("Ask ERPNext like ChatGPT")}</h2>
-				<p>${__("Converse in natural language and let the assistant generate insights, summaries, and follow-up actions instantly.")}</p>
-				<div class="ai-chat-hero-suggestions">
-					${suggestionsHtml}
-				</div>
-				<div class="hero-actions">
-					<button class="btn btn-primary btn-lg btn-hero-summary">
-						${__("Generate Business Summary")}
-					</button>
-					<button class="btn btn-default btn-lg btn-hero-start">
-						${__("Start Conversation")}
-					</button>
-				</div>
-			</div>
-		`).appendTo(this.$page);
-
-		this.$toolbar = $(
-			`<div class="ai-chat-toolbar">
+		this.$toolbar = $(`
+			<div class="ai-chat-toolbar">
+				<button type="button" class="btn btn-round btn-default btn-context" title="${__("Include business context")}" aria-pressed="true">
+					${contextIcon}
+				</button>
 				<button type="button" class="btn btn-round btn-default btn-summary" title="${__("Generate Business Summary")}">
 					${summaryIcon}
 				</button>
 				<button type="button" class="btn btn-round btn-default btn-new" title="${__("Start New Chat")}">
 					${newIcon}
 				</button>
-				<button type="button" class="btn btn-round btn-primary btn-send" title="${__("Send Message")}">
-					${sendIcon}
-				</button>
-			</div>`
-		).appendTo(this.$page);
+			</div>
+		`).appendTo(this.$page);
 
 		this.$container = $(`
 			<div class="ai-chat-wrapper">
 				<div class="ai-chat-feed"></div>
 				<div class="ai-chat-input">
 					<div class="ai-chat-input-shell">
-						<div class="ai-chat-meta">
-							<label class="checkbox">
-								<input type="checkbox" class="ai-include-context" checked />
-								<span>${__("Include business context")}</span>
-							</label>
+						<div class="ai-chat-composer">
+							<textarea 
+								class="form-control" 
+								placeholder="${__("Ask about revenue, inventory, or any business insight...")}"
+								rows="3"
+							></textarea>
+							<button type="button" class="btn btn-round btn-primary btn-send" title="${__("Send Message")}">
+								${sendIcon}
+							</button>
 						</div>
-						<textarea 
-							class="form-control" 
-							placeholder="${__("Ask about revenue, inventory, or any business insight...")}"
-							rows="3"
-						></textarea>
 					</div>
 					<div class="ai-chat-input-footer">
 						${__("ERPNext AI can make mistakes. Verify critical insights before acting.")}
@@ -835,56 +955,195 @@ erpnext_ai.pages.AIChat = class AIChat {
 			</div>
 		`).appendTo(this.$page);
 
-		this.$hero.find(".hero-suggestion").each((idx, el) => {
-			$(el).data("message", suggestionCards[idx] && suggestionCards[idx].message);
-		});
-
 		this.$feed = this.$container.find(".ai-chat-feed");
+		const idleVideoUrl = (frappe.utils && frappe.utils.get_url)
+			? frappe.utils.get_url("/assets/erpnext_ai/videos/idle_background.mp4")
+			: "/assets/erpnext_ai/videos/idle_background.mp4";
+
+		this.$idleVideo = $(`
+			<video class="ai-chat-idle-video" muted playsinline loop preload="auto" aria-hidden="true">
+				<source src="${idleVideoUrl}" type="video/mp4" />
+			</video>
+		`).prependTo(this.$feed);
+		const idleVideoEl = this.$idleVideo.get(0);
+		if (idleVideoEl) {
+			idleVideoEl.muted = true;
+			idleVideoEl.loop = true;
+			idleVideoEl.playsInline = true;
+			try {
+				idleVideoEl.addEventListener("loadeddata", () => {
+					this.idleVideoReady = true;
+				});
+				idleVideoEl.addEventListener("canplaythrough", () => {
+					this.idleVideoReady = true;
+				});
+				idleVideoEl.addEventListener("error", (event) => {
+					console.warn("Idle video error", event);
+				});
+				idleVideoEl.load();
+			} catch (err) {
+				console.warn("Idle video load failed", err);
+			}
+		}
+
 		this.$textarea = this.$container.find("textarea");
-		this.$includeContext = this.$container.find(".ai-include-context");
+		this.$contextBtn = this.$toolbar.find(".btn-context");
 		this.$days = this.$container.find(".ai-days");
-		this.$sendBtn = this.$page.find(".btn-send");
+		this.$sendBtn = this.$container.find(".btn-send");
 		this.$newBtn = this.$page.find(".btn-new");
 		this.$summaryBtn = this.$page.find(".btn-summary");
 
+		this._syncContextToggle();
 		this._bindEvents();
+		this._recordActivity();
 	}
 
 	_bindEvents() {
-		this.$sendBtn.on("click", () => this.sendMessage());
-		this.$newBtn.on("click", () => this.startNewConversation(true));
-		this.$summaryBtn.on("click", () => this.requestSummary());
+		this.$sendBtn.on("click", () => {
+			this._playButtonPress(this.$sendBtn);
+			this._recordActivity();
+			this.sendMessage();
+		});
+
+		this.$newBtn.on("click", () => {
+			this._playButtonPress(this.$newBtn);
+			this._recordActivity();
+			this.startNewConversation(true);
+		});
+
+		this.$summaryBtn.on("click", () => {
+			this._playButtonPress(this.$summaryBtn);
+			this._recordActivity();
+			this.requestSummary();
+		});
+
+		this.$contextBtn.on("click", () => {
+			this._playButtonPress(this.$contextBtn);
+			this._recordActivity();
+			this.includeContext = !this.includeContext;
+			this._syncContextToggle();
+			this._updateContextPreference();
+		});
 		
 		this.$textarea.on("keydown", (e) => {
+			this._recordActivity();
 			if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
 				e.preventDefault();
+				this._playButtonPress(this.$sendBtn);
 				this.sendMessage();
 			}
 		});
+		this.$textarea.on("input", () => this._recordActivity());
+		this.$feed.on("scroll", () => this._recordActivity());
 
 		this.$days.on("change", () => {
 			this.days = cint(this.$days.val());
 		});
 
-		this.$includeContext.on("change", () => {
-			this.includeContext = !!this.$includeContext.prop("checked");
-			this._updateContextPreference();
-		});
+	}
 
-		this.$hero.find(".btn-hero-summary").on("click", () => this.requestSummary());
-		this.$hero.find(".btn-hero-start").on("click", () => {
-			this.$textarea.focus();
-			this.$hero.addClass("hidden");
-		});
-		this.$hero.find(".hero-suggestion").on("click", (event) => {
-			const $target = $(event.currentTarget);
-			const prompt = ($target.data("message") || "").toString().trim();
-			if (!prompt) return;
+	_playButtonPress($btn) {
+		if (!$btn || !$btn.length || $btn.prop("disabled")) {
+			return;
+		}
 
-			this.$textarea.val(prompt);
-			this.$textarea.focus();
-			this.$hero.addClass("hidden");
-		});
+		if ($btn.hasClass("is-pressing")) {
+			return;
+		}
+
+		const clear = () => $btn.removeClass("is-pressing");
+		$btn.addClass("is-pressing");
+		$btn.one("animationend.ai-button", clear);
+		setTimeout(clear, 360);
+	}
+
+	_recordActivity() {
+		this._exitIdleState();
+		this._clearIdleTimer();
+		this._ensureIdleVideoPrimed();
+
+		this.idleTimer = setTimeout(() => {
+			this._enterIdleState();
+		}, this.idleDelay);
+	}
+
+	_clearIdleTimer() {
+		if (this.idleTimer) {
+			clearTimeout(this.idleTimer);
+			this.idleTimer = null;
+		}
+	}
+
+	_ensureIdleVideoPrimed() {
+		if (this.idleVideoPrimed) return;
+
+		const videoEl = this.$idleVideo && this.$idleVideo.get ? this.$idleVideo.get(0) : null;
+		if (!videoEl) return;
+
+		try {
+			const playPromise = videoEl.play();
+			if (playPromise && typeof playPromise.then === "function") {
+				playPromise
+					.then(() => {
+						try {
+							videoEl.pause();
+							videoEl.currentTime = 0;
+						} catch (err) {
+							console.warn("Idle video prime reset failed", err);
+						}
+						this.idleVideoPrimed = true;
+					})
+					.catch(() => {});
+			} else {
+				videoEl.pause();
+				videoEl.currentTime = 0;
+				this.idleVideoPrimed = true;
+			}
+		} catch (err) {
+			console.warn("Idle video prime failed", err);
+		}
+	}
+
+	_enterIdleState() {
+		if (this.isIdle) return;
+		if (!this.idleVideoReady) {
+			this._clearIdleTimer();
+			this.idleTimer = setTimeout(() => this._enterIdleState(), 500);
+			return;
+		}
+
+		this._clearIdleTimer();
+		this.isIdle = true;
+		this.$container.addClass("is-idle");
+
+		const videoEl = this.$idleVideo && this.$idleVideo.get ? this.$idleVideo.get(0) : null;
+		if (videoEl) {
+			try {
+				const playPromise = videoEl.play();
+				if (playPromise && typeof playPromise.catch === "function") {
+					playPromise.catch(() => {});
+				}
+			} catch (err) {
+				console.warn("Failed to play idle video", err);
+			}
+		}
+	}
+
+	_exitIdleState() {
+		if (!this.isIdle) return;
+		this._clearIdleTimer();
+		this.isIdle = false;
+		this.$container.removeClass("is-idle");
+
+		const videoEl = this.$idleVideo && this.$idleVideo.get ? this.$idleVideo.get(0) : null;
+		if (videoEl) {
+			try {
+				videoEl.pause();
+				videoEl.currentTime = 0;
+			} catch (err) {
+				console.warn("Failed to reset idle video", err);
+			}
+		}
 	}
 
 	_updateContextPreference() {
@@ -910,8 +1169,24 @@ erpnext_ai.pages.AIChat = class AIChat {
 		}
 	}
 
+	_syncContextToggle() {
+		if (!this.$contextBtn || !this.$contextBtn.length) return;
+
+		const isActive = !!this.includeContext;
+		const labelBase = __("Include business context");
+		const stateLabel = isActive ? __("On") : __("Off");
+		const title = `${labelBase} (${stateLabel})`;
+
+		this.$contextBtn.toggleClass("is-active", isActive);
+		this.$contextBtn.attr("aria-pressed", isActive ? "true" : "false");
+		this.$contextBtn.attr("aria-label", title);
+		this.$contextBtn.attr("title", title);
+	}
+
 	startNewConversation(force = false) {
 		if (this.isSending) return;
+		this._recordActivity();
+
 		if (!force && this.conversation && (this.conversation.messages || []).length) {
 			return;
 		}
@@ -930,6 +1205,7 @@ erpnext_ai.pages.AIChat = class AIChat {
 				this.conversation = r.message || null;
 				this.renderConversation();
 				this.$textarea.focus();
+				this._recordActivity();
 			},
 		});
 	}
@@ -1036,30 +1312,19 @@ erpnext_ai.pages.AIChat = class AIChat {
 			</div>
 		`);
 
-		if (!options.pending && msg.context_json) {
-			const contextId = frappe.utils.get_random ?
-				frappe.utils.get_random(10) :
-				Math.random().toString(36).slice(2, 12);
+		if (options.animate) {
+			const applyAnimation = () => {
+				if (!$message || !$message.length) return;
+				$message.addClass("is-entering");
+				const clear = () => $message.removeClass("is-entering");
+				$message.one("animationend.ai-chat-enter", clear);
+				setTimeout(clear, 450);
+			};
 
-			const $context = $(`
-				<details class="ai-chat-context">
-					<summary>${__("View Context Data")}</summary>
-					<pre id="context-${contextId}"></pre>
-				</details>
-			`);
-
-			const $meta = $message.find(".ai-chat-meta");
-			if ($meta.length) {
-				$meta.after($context);
+			if (typeof window !== "undefined" && window.requestAnimationFrame) {
+				window.requestAnimationFrame(applyAnimation);
 			} else {
-				$message.find(".ai-chat-content").append($context);
-			}
-
-			try {
-				const parsed = JSON.parse(msg.context_json);
-				$context.find("pre").text(JSON.stringify(parsed, null, 2));
-			} catch (e) {
-				$context.find("pre").text(msg.context_json);
+				applyAnimation();
 			}
 		}
 
@@ -1083,6 +1348,7 @@ erpnext_ai.pages.AIChat = class AIChat {
 	showTypingIndicator(label) {
 		this.clearTypingIndicator();
 		this.$hero.addClass("hidden");
+		this._recordActivity();
 		
 		const indicatorLabel = label || __("Analyzing your data...");
 		this.$typingIndicator = this.createMessageElement(
@@ -1092,6 +1358,7 @@ erpnext_ai.pages.AIChat = class AIChat {
 				pendingLabel: indicatorLabel,
 				timestampOverride: frappe.datetime.now_datetime ? 
 					frappe.datetime.now_datetime() : new Date(),
+				animate: true
 			}
 		);
 
@@ -1108,11 +1375,12 @@ erpnext_ai.pages.AIChat = class AIChat {
 				creation: frappe.datetime.now_datetime ? 
 					frappe.datetime.now_datetime() : new Date(),
 			},
-			{ error: true }
+			{ error: true, animate: true }
 		);
 
 		this.$feed.append($error);
 		this.scrollFeedToBottom();
+		this._recordActivity();
 	}
 
 	extractErrorMessage(err) {
@@ -1152,13 +1420,20 @@ erpnext_ai.pages.AIChat = class AIChat {
 		});
 	}
 
-	renderConversation() {
+	renderConversation(options = {}) {
+		const animateLatest = !!options.animateLatest;
+
 		this.$feed.empty();
 		this.clearTypingIndicator();
 		this.clearPendingUserEcho();
 		
 		const messages = (this.conversation && this.conversation.messages) || [];
 		const hasMessages = !!messages.length;
+
+		if (this.conversation && typeof this.conversation.include_context !== "undefined") {
+			this.includeContext = !!this.conversation.include_context;
+			this._syncContextToggle();
+		}
 
 		this.$page.toggleClass("chat-active", hasMessages);
 		
@@ -1168,20 +1443,24 @@ erpnext_ai.pages.AIChat = class AIChat {
 		}
 
 		this.$hero.addClass("hidden");
-		this.$includeContext.prop("checked", !!this.conversation.include_context);
 
-		messages.forEach((msg) => {
-			const $message = this.createMessageElement(msg);
+		messages.forEach((msg, idx) => {
+			const shouldAnimate = animateLatest && idx === messages.length - 1;
+			const createOptions = shouldAnimate ? { animate: true } : {};
+			const $message = this.createMessageElement(msg, createOptions);
 			this.$feed.append($message);
 		});
 
 		this.scrollFeedToBottom();
+		this._recordActivity();
 	}
 
 	sendMessage() {
 		if (this.isSending) return;
 		
 		const message = (this.$textarea.val() || "").trim();
+		this._recordActivity();
+
 		if (!message) {
 			frappe.show_alert({ 
 				message: __("Please enter a message"), 
@@ -1209,7 +1488,8 @@ erpnext_ai.pages.AIChat = class AIChat {
 			},
 			{ 
 				timestampOverride: frappe.datetime.now_datetime ? 
-					frappe.datetime.now_datetime() : new Date() 
+					frappe.datetime.now_datetime() : new Date(),
+				animate: true
 			}
 		);
 
@@ -1230,7 +1510,7 @@ erpnext_ai.pages.AIChat = class AIChat {
 				this.clearTypingIndicator();
 				this.conversation = r.message || this.conversation;
 				this.$textarea.val("");
-				this.renderConversation();
+				this.renderConversation({ animateLatest: true });
 			},
 			always: () => {
 				this.isSending = false;
@@ -1317,7 +1597,7 @@ erpnext_ai.pages.AIChat = class AIChat {
 					},
 				}).then((resp) => {
 					this.conversation = resp.message || this.conversation;
-					this.renderConversation();
+					this.renderConversation({ animateLatest: true });
 					
 					if (data.report_name) {
 						frappe.show_alert({

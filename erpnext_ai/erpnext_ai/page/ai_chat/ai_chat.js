@@ -7,6 +7,10 @@ frappe.pages["ai-chat"].on_page_load = function (wrapper) {
 		single_column: true,
 	});
 
+	if (page && typeof page.set_title === "function") {
+		page.set_title("");
+	}
+
 	new erpnext_ai.pages.AIChat(page);
 };
 
@@ -25,6 +29,7 @@ erpnext_ai.pages.AIChat = class AIChat {
 		this.$idleVideo = null;
 		this.$typingIndicator = null;
 		this.$pendingUserEcho = null;
+		this.$toolbar = null;
 
 		this._buildLayout();
 		this.startNewConversation();
@@ -242,11 +247,13 @@ erpnext_ai.pages.AIChat = class AIChat {
 				min-height: 0;
 				display: flex;
 				flex-direction: column;
-				background: var(--ai-chat-feed-bg);
-				border-radius: 20px;
-				border: 1px solid var(--ai-chat-border);
+				background: #232323;
+				border-radius: 22px;
+				border: 1px solid rgba(148, 163, 184, 0.18);
 				overflow: hidden;
 				position: relative;
+				box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04),
+					0 24px 60px rgba(15, 23, 42, 0.18);
 			}
 
 			.ai-chat-container.chat-active .ai-chat-wrapper {
@@ -266,10 +273,11 @@ erpnext_ai.pages.AIChat = class AIChat {
 				padding: 1.5rem 0 2rem;
 				display: flex;
 				flex-direction: column;
-				background: var(--ai-chat-feed-bg);
+				background: transparent;
 				position: relative;
 				scrollbar-width: thin;
 				scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
+				z-index: 1;
 			}
 
 			.ai-chat-container.chat-active .ai-chat-feed {
@@ -293,7 +301,15 @@ erpnext_ai.pages.AIChat = class AIChat {
 				background: rgba(255, 255, 255, 0.25);
 			}
 
-			.ai-chat-idle-video {
+			.ai-chat-idle-layer {
+				position: absolute;
+				inset: 0;
+				pointer-events: none;
+				overflow: hidden;
+				z-index: 0;
+			}
+
+			.ai-chat-idle-layer video {
 				position: absolute;
 				inset: 0;
 				width: 100%;
@@ -302,12 +318,11 @@ erpnext_ai.pages.AIChat = class AIChat {
 				opacity: 0;
 				pointer-events: none;
 				transition: opacity 0.6s ease;
-				filter: saturate(0.7) brightness(0.6);
-				z-index: 0;
+				filter: saturate(0.8) brightness(1.1);
 			}
 
-			.ai-chat-wrapper.is-idle .ai-chat-idle-video {
-				opacity: 0.5;
+			.ai-chat-wrapper.is-idle .ai-chat-idle-layer video {
+				opacity: 0.7;
 			}
 
 			.ai-chat-feed::after {
@@ -404,40 +419,79 @@ erpnext_ai.pages.AIChat = class AIChat {
 			}
 
 			.ai-chat-bubble {
-				padding: 1.1rem 1.25rem;
-				border-radius: 16px;
-				font-size: 0.97rem;
+				padding: 1.2rem 1.4rem;
+				border-radius: 24px;
+				font-size: 0.98rem;
 				line-height: 1.65;
 				max-width: 100%;
 				word-wrap: anywhere;
-				background: rgba(255, 255, 255, 0.6);
+				position: relative;
+				background: rgba(236, 238, 241, 0.46);
 				color: var(--ai-chat-text);
+				border: 1px solid rgba(15, 23, 42, 0.05);
 				box-shadow: none;
-				border: none;
+				overflow: hidden;
+			}
+
+			.ai-chat-bubble:hover {
+				transform: translateY(-1px);
+				box-shadow:
+					0 18px 46px rgba(17, 24, 39, 0.28),
+					inset 0 4px 11px rgba(255, 255, 255, 0.52),
+					inset 0 -9px 16px rgba(17, 24, 39, 0.2);
+				border-color: rgba(255, 255, 255, 0.3);
+			}
+
+			.ai-chat-bubble::before,
+			.ai-chat-bubble::after {
+				content: '';
+				position: absolute;
+				pointer-events: none;
+				border-radius: 50%;
+				filter: blur(8px);
+				opacity: 0.85;
+				display: none;
 			}
 
 			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-bubble {
-				background: rgba(54, 54, 54, 0.75);
+				background: rgba(26, 28, 32, 0.5);
+				border: 1px solid rgba(255, 255, 255, 0.03);
+				box-shadow: none;
+				color: rgba(236, 242, 255, 0.9);
 			}
 
 			.ai-chat-bubble.assistant {
-				background: var(--ai-chat-assistant-bg);
-				color: var(--ai-chat-text);
+				background: rgba(236, 238, 241, 0.46);
+				border: 1px solid rgba(15, 23, 42, 0.05);
+				box-shadow: none;
+				color: rgba(15, 23, 42, 0.88);
+			}
+
+			.ai-chat-bubble.assistant::before {
+				display: none;
 			}
 
 			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-bubble.assistant {
-				background: #363636;
+				background: rgba(26, 28, 32, 0.5);
+				border: 1px solid rgba(255, 255, 255, 0.03);
+				color: rgba(236, 242, 255, 0.9);
 			}
 
 			.ai-chat-bubble.user {
-				background: var(--ai-chat-user-bg);
-				color: var(--ai-chat-user-text);
+				background: rgba(240, 241, 244, 0.47);
+				border: 1px solid rgba(15, 23, 42, 0.05);
+				box-shadow: none;
+				color: rgba(28, 32, 46, 0.88);
+			}
+
+			.ai-chat-bubble.user::before {
+				display: none;
 			}
 
 			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-bubble.user {
-				background: #161616;
-				color: var(--ai-chat-text);
-				box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+				background: rgba(23, 24, 28, 0.5);
+				border: 1px solid rgba(255, 255, 255, 0.03);
+				color: rgba(236, 242, 255, 0.9);
 			}
 
 			.ai-chat-bubble.system {
@@ -447,24 +501,28 @@ erpnext_ai.pages.AIChat = class AIChat {
 			}
 
 			.ai-chat-bubble.pending {
+				min-width: 90px;
+				min-height: 46px;
 				display: inline-flex;
 				align-items: center;
-				gap: 0.9rem;
-				color: var(--ai-chat-muted);
-				background: transparent;
-				padding-left: 0;
+				justify-content: center;
+				padding: 0.75rem 1.2rem;
+				background: rgba(236, 238, 241, 0.32);
+				border: 1px solid rgba(15, 23, 42, 0.05);
 			}
 
 			.ai-chat-bubble.pending .typing-dots {
 				display: inline-flex;
-				gap: 0.4rem;
+				align-items: center;
+				justify-content: center;
+				gap: 0.35rem;
 			}
 
 			.ai-chat-bubble.pending .typing-dots span {
-				width: 0.5rem;
-				height: 0.5rem;
+				width: 0.48rem;
+				height: 0.48rem;
 				border-radius: 50%;
-				background: var(--ai-chat-muted);
+				background: rgba(148, 163, 184, 0.72);
 				animation: ai-chat-pulse 1.4s infinite ease-in-out;
 			}
 
@@ -569,9 +627,9 @@ erpnext_ai.pages.AIChat = class AIChat {
 			}
 
 			.ai-chat-input {
-				padding: 1.25rem clamp(1.25rem, 3vw, 1.75rem) 1.5rem;
-				border-top: 1px solid var(--ai-chat-border);
-				background: var(--ai-chat-feed-bg);
+				padding: 1.05rem clamp(1rem, 3vw, 1.5rem) 1.3rem;
+				border-top: none;
+				background: transparent;
 				display: flex;
 				flex-direction: column;
 				gap: 0.75rem;
@@ -585,14 +643,14 @@ erpnext_ai.pages.AIChat = class AIChat {
 			}
 
 			.ai-chat-container.chat-active .ai-chat-input {
-				padding: 1rem clamp(1.25rem, 3vw, 1.75rem) 1.25rem;
+				padding: 0.9rem clamp(1rem, 3vw, 1.35rem) 1.1rem;
 			}
 
 			.ai-chat-input-shell {
-				background: #161616;
-				border: 1px solid #363636;
-				border-radius: 20px;
-				padding: 0.75rem 1rem;
+				background: rgba(20, 22, 26, 0.35);
+				border: 1px solid rgba(255, 255, 255, 0.05);
+				border-radius: 22px;
+				padding: 0.65rem clamp(1.35rem, 4vw, 2rem);
 				display: flex;
 				flex-direction: column;
 				gap: 0.75rem;
@@ -601,8 +659,8 @@ erpnext_ai.pages.AIChat = class AIChat {
 
 			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-input-shell {
 				box-shadow: none;
-				background: #161616;
-				border-color: #363636;
+				background: rgba(20, 22, 26, 0.35);
+				border-color: rgba(255, 255, 255, 0.06);
 			}
 
 			.ai-chat-composer {
@@ -897,13 +955,6 @@ erpnext_ai.pages.AIChat = class AIChat {
 
 		const contextIcon = `
 			<span class="ai-icon ai-icon-dollar" aria-hidden="true">$</span>`;
-		const summaryIcon = `
-			<svg class="ai-icon" viewBox="0 0 24 24" aria-hidden="true">
-				<line x1="18" y1="20" x2="18" y2="10"></line>
-				<line x1="12" y1="20" x2="12" y2="4"></line>
-				<line x1="6" y1="20" x2="6" y2="14"></line>
-				<line x1="2" y1="20" x2="22" y2="20"></line>
-			</svg>`;
 		const newIcon = `
 			<svg class="ai-icon" viewBox="0 0 24 24" aria-hidden="true">
 				<path d="M12 20h9"></path>
@@ -918,29 +969,22 @@ erpnext_ai.pages.AIChat = class AIChat {
 		this.$page = $('<div class="ai-chat-container"></div>').appendTo(this.page.body);
 		this.$hero = $();
 
-		this.$toolbar = $(`
-			<div class="ai-chat-toolbar">
-				<button type="button" class="btn btn-round btn-default btn-context" title="${__("Include business context")}" aria-pressed="true">
-					${contextIcon}
-				</button>
-				<button type="button" class="btn btn-round btn-default btn-summary" title="${__("Generate Business Summary")}">
-					${summaryIcon}
-				</button>
-				<button type="button" class="btn btn-round btn-default btn-new" title="${__("Start New Chat")}">
-					${newIcon}
-				</button>
-			</div>
-		`).appendTo(this.$page);
-
 		this.$container = $(`
 			<div class="ai-chat-wrapper">
+				<div class="ai-chat-toolbar">
+					<button type="button" class="btn btn-round btn-default btn-context" title="${__("Include business context")}" aria-pressed="true">
+						${contextIcon}
+					</button>
+					<button type="button" class="btn btn-round btn-default btn-new" title="${__("Start New Chat")}">
+						${newIcon}
+					</button>
+				</div>
 				<div class="ai-chat-feed"></div>
 				<div class="ai-chat-input">
 					<div class="ai-chat-input-shell">
 						<div class="ai-chat-composer">
 							<textarea 
-								class="form-control" 
-								placeholder="${__("Ask about revenue, inventory, or any business insight...")}"
+								class="form-control"
 								rows="3"
 							></textarea>
 							<button type="button" class="btn btn-round btn-primary btn-send" title="${__("Send Message")}">
@@ -948,50 +992,68 @@ erpnext_ai.pages.AIChat = class AIChat {
 							</button>
 						</div>
 					</div>
-					<div class="ai-chat-input-footer">
-						${__("ERPNext AI can make mistakes. Verify critical insights before acting.")}
-					</div>
 				</div>
 			</div>
 		`).appendTo(this.$page);
 
 		this.$feed = this.$container.find(".ai-chat-feed");
+		console.log("[AI Chat] Feed element found:", this.$feed.length > 0, this.$feed);
+
+		this.$idleLayer = $('<div class="ai-chat-idle-layer" aria-hidden="true"></div>').prependTo(this.$container);
 		const idleVideoUrl = (frappe.utils && frappe.utils.get_url)
-			? frappe.utils.get_url("/assets/erpnext_ai/videos/idle_background.mp4")
-			: "/assets/erpnext_ai/videos/idle_background.mp4";
+			? frappe.utils.get_url("/assets/erpnext_ai/videos/suv.MP4")
+			: "/assets/erpnext_ai/videos/suv.MP4";
+		console.log("[AI Chat] Idle video URL:", idleVideoUrl);
 
 		this.$idleVideo = $(`
 			<video class="ai-chat-idle-video" muted playsinline loop preload="auto" aria-hidden="true">
 				<source src="${idleVideoUrl}" type="video/mp4" />
 			</video>
-		`).prependTo(this.$feed);
+		`).appendTo(this.$idleLayer);
+		console.log("[AI Chat] Video jQuery element created:", this.$idleVideo.length > 0);
+
 		const idleVideoEl = this.$idleVideo.get(0);
+		console.log("[AI Chat] Video DOM element:", idleVideoEl);
+
 		if (idleVideoEl) {
 			idleVideoEl.muted = true;
 			idleVideoEl.loop = true;
 			idleVideoEl.playsInline = true;
+			console.log("[AI Chat] Video properties set");
+
 			try {
 				idleVideoEl.addEventListener("loadeddata", () => {
+					console.log("[AI Chat] Video loadeddata event");
 					this.idleVideoReady = true;
 				});
 				idleVideoEl.addEventListener("canplaythrough", () => {
+					console.log("[AI Chat] Video canplaythrough event");
 					this.idleVideoReady = true;
 				});
 				idleVideoEl.addEventListener("error", (event) => {
-					console.warn("Idle video error", event);
+					console.error("[AI Chat] Video error:", event, "code:", idleVideoEl.error?.code);
 				});
 				idleVideoEl.load();
+				console.log("[AI Chat] Video load() called");
+
+				// Verify video in DOM
+				setTimeout(() => {
+					const check = document.querySelector('.ai-chat-idle-video');
+					console.log("[AI Chat] Video exists in DOM:", !!check, check);
+				}, 1000);
 			} catch (err) {
-				console.warn("Idle video load failed", err);
+				console.error("[AI Chat] Video setup failed:", err);
 			}
+		} else {
+			console.error("[AI Chat] Failed to get video DOM element!");
 		}
 
 		this.$textarea = this.$container.find("textarea");
+		this.$toolbar = this.$container.find(".ai-chat-toolbar");
 		this.$contextBtn = this.$toolbar.find(".btn-context");
 		this.$days = this.$container.find(".ai-days");
 		this.$sendBtn = this.$container.find(".btn-send");
-		this.$newBtn = this.$page.find(".btn-new");
-		this.$summaryBtn = this.$page.find(".btn-summary");
+		this.$newBtn = this.$toolbar.find(".btn-new");
 
 		this._syncContextToggle();
 		this._bindEvents();
@@ -1009,12 +1071,6 @@ erpnext_ai.pages.AIChat = class AIChat {
 			this._playButtonPress(this.$newBtn);
 			this._recordActivity();
 			this.startNewConversation(true);
-		});
-
-		this.$summaryBtn.on("click", () => {
-			this._playButtonPress(this.$summaryBtn);
-			this._recordActivity();
-			this.requestSummary();
 		});
 
 		this.$contextBtn.on("click", () => {
@@ -1105,8 +1161,10 @@ erpnext_ai.pages.AIChat = class AIChat {
 	}
 
 	_enterIdleState() {
+		console.log("[AI Chat] _enterIdleState called, isIdle:", this.isIdle, "videoReady:", this.idleVideoReady);
 		if (this.isIdle) return;
 		if (!this.idleVideoReady) {
+			console.log("[AI Chat] Video not ready yet, retrying in 500ms");
 			this._clearIdleTimer();
 			this.idleTimer = setTimeout(() => this._enterIdleState(), 500);
 			return;
@@ -1115,22 +1173,33 @@ erpnext_ai.pages.AIChat = class AIChat {
 		this._clearIdleTimer();
 		this.isIdle = true;
 		this.$container.addClass("is-idle");
+		console.log("[AI Chat] is-idle class added to container");
 
 		const videoEl = this.$idleVideo && this.$idleVideo.get ? this.$idleVideo.get(0) : null;
+		console.log("[AI Chat] Attempting to play video, element:", videoEl);
 		if (videoEl) {
 			try {
 				const playPromise = videoEl.play();
 				if (playPromise && typeof playPromise.catch === "function") {
-					playPromise.catch(() => {});
+					playPromise
+						.then(() => {
+							console.log("[AI Chat] ✅ Idle video playing successfully!");
+						})
+						.catch((err) => {
+							console.error("[AI Chat] ❌ Video play rejected:", err);
+						});
 				}
 			} catch (err) {
-				console.warn("Failed to play idle video", err);
+				console.error("[AI Chat] Failed to play idle video:", err);
 			}
+		} else {
+			console.error("[AI Chat] No video element found for playback!");
 		}
 	}
 
 	_exitIdleState() {
 		if (!this.isIdle) return;
+		console.log("[AI Chat] _exitIdleState called - stopping video");
 		this._clearIdleTimer();
 		this.isIdle = false;
 		this.$container.removeClass("is-idle");
@@ -1140,6 +1209,7 @@ erpnext_ai.pages.AIChat = class AIChat {
 			try {
 				videoEl.pause();
 				videoEl.currentTime = 0;
+				console.log("[AI Chat] Video paused and reset");
 			} catch (err) {
 				console.warn("Failed to reset idle video", err);
 			}
@@ -1263,12 +1333,10 @@ erpnext_ai.pages.AIChat = class AIChat {
 
 		let body;
 		if (options.pending) {
-			const label = options.pendingLabel || __("Processing your request...");
 			body = `
 				<span class="typing-dots">
 					<span></span><span></span><span></span>
 				</span>
-				<span>${frappe.utils.escape_html(label)}</span>
 			`;
 		} else {
 			body = this.renderMarkdown(msg.content);
@@ -1350,7 +1418,7 @@ erpnext_ai.pages.AIChat = class AIChat {
 		this.$hero.addClass("hidden");
 		this._recordActivity();
 		
-		const indicatorLabel = label || __("Analyzing your data...");
+		const indicatorLabel = label || "";
 		this.$typingIndicator = this.createMessageElement(
 			{ role: "assistant", content: "" },
 			{
@@ -1424,6 +1492,7 @@ erpnext_ai.pages.AIChat = class AIChat {
 		const animateLatest = !!options.animateLatest;
 
 		this.$feed.empty();
+
 		this.clearTypingIndicator();
 		this.clearPendingUserEcho();
 		
@@ -1474,6 +1543,9 @@ erpnext_ai.pages.AIChat = class AIChat {
 			return;
 		}
 
+		const originalMessage = message;
+		this.$textarea.val("");
+
 		this.isSending = true;
 		this._setButtonsDisabled(true);
 		this.$hero.addClass("hidden");
@@ -1495,7 +1567,7 @@ erpnext_ai.pages.AIChat = class AIChat {
 
 		this.$feed.append(this.$pendingUserEcho);
 		this.scrollFeedToBottom();
-		this.showTypingIndicator(__("Generating response..."));
+			this.showTypingIndicator("");
 
 		frappe.call({
 			method: "erpnext_ai.api.send_ai_message",
@@ -1523,6 +1595,9 @@ erpnext_ai.pages.AIChat = class AIChat {
 				
 				this.fetchConversation().finally(() => {
 					this.renderErrorBubble(errorText);
+					if (!this.$textarea.val()) {
+						this.$textarea.val(originalMessage);
+					}
 					frappe.show_alert({
 						message: errorText,
 						indicator: "red",
@@ -1535,7 +1610,6 @@ erpnext_ai.pages.AIChat = class AIChat {
 	_setButtonsDisabled(disabled) {
 		this.$sendBtn.prop("disabled", disabled);
 		this.$newBtn.prop("disabled", disabled);
-		this.$summaryBtn.prop("disabled", disabled);
 	}
 
 	requestSummary() {

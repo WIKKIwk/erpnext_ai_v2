@@ -129,6 +129,9 @@ def _format_context_summary(context: Dict[str, Any], days: int, prompt: str | No
     pending = context.get("pending") or {}
     people = dict(context.get("people") or {})
     active_employee_details = people.pop("active_employee_details", [])
+    tasks = context.get("tasks") or {}
+    task_assignments = tasks.get("assignments") or []
+    recent_tasks = tasks.get("recent") or []
     top_customers = context.get("top_customers") or []
     records = context.get("records") or {}
     record_users = records.get("users") or []
@@ -220,6 +223,35 @@ def _format_context_summary(context: Dict[str, Any], days: int, prompt: str | No
             lines.append("Tranzaksiyalar statistikasi:")
             lines.extend(metric_lines)
             lines.append("")
+
+    if tasks:
+        lines.append("Vazifalar holati:")
+        lines.append(
+            f"- Jami vazifalar: {tasks.get('total', 0)} | Faol: {tasks.get('active', 0)} | Muddatidan o'tgan: {tasks.get('overdue', 0)}"
+        )
+        if task_assignments:
+            lines.append("- Eng band mas'ullar:")
+            for assignee in task_assignments[:5]:
+                name = assignee.get("full_name") or assignee.get("user")
+                overdue = assignee.get("overdue_tasks") or 0
+                lines.append(
+                    f"  · {name}: {assignee.get('open_tasks', 0)} ta ochiq vazifa" + (f", {overdue} ta kechikkan" if overdue else "")
+                )
+        if recent_tasks:
+            lines.append("- So'nggi yangilangan vazifalar:")
+            for task in recent_tasks[:5]:
+                subject = task.get("subject") or task.get("task")
+                status = task.get("status")
+                due = task.get("due_date")
+                assignees = ", ".join(task.get("assignees") or [])
+                detail_parts = [status]
+                if due:
+                    detail_parts.append(f"muddati {due}")
+                if assignees:
+                    detail_parts.append(f"mas'ul(lar): {assignees}")
+                detail = ", ".join(part for part in detail_parts if part)
+                lines.append(f"  · {subject} ({detail})" if detail else f"  · {subject}")
+        lines.append("")
 
     if finance:
         has_finance = any(

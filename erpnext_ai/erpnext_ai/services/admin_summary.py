@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from datetime import date, datetime, timedelta
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 import frappe
 
@@ -60,13 +60,17 @@ def _collect_total(doctype: str, amount_field: str, date_field: str, start: date
     }
 
 
-def _collect_open_count(doctype: str, status_field: str, closed_status: str) -> int:
+def _collect_open_count(doctype: str, status_field: str, closed_status: str | Tuple[str, ...]) -> int:
     if not frappe.db.table_exists(doctype):
         return 0
+    if isinstance(closed_status, tuple):
+        condition = ("not in", list(closed_status))
+    else:
+        condition = ("!=", closed_status)
     return frappe.db.count(
         doctype,
         filters={
-            status_field: ("!=", closed_status),
+            status_field: condition,
             "docstatus": ("<", 2),
         },
     )
@@ -181,6 +185,111 @@ def _system_user_directory(limit: int = 100) -> List[Dict[str, Any]]:
             }
         )
     return directory
+
+
+def _task_overview() -> Dict[str, Any]:
+    if not frappe.db.table_exists("Task"):
+        return {
+            "total": 0,
+            "active": 0,
+            "overdue": 0,
+            "assignments": [],
+            "recent": [],
+        }
+
+    active_statuses = ("Open", "Working", "Pending Review")
+    overdue_statuses = ("Overdue",)
+
+    total_tasks = frappe.db.count("Task", filters={"docstatus": ("<", 2)})
+    active_tasks = frappe.db.count(
+        "Task",
+        filters={
+            "docstatus": ("<", 2),
+            "status": ("in", list(active_statuses + overdue_statuses)),
+        },
+    )
+    overdue_tasks = frappe.db.count(
+        "Task",
+        filters={
+            "docstatus": ("<", 2),
+            "status": ("in", list(overdue_statuses)),
+        },
+    )
+
+    assignments: List[Dict[str, Any]] = []
+    if frappe.db.table_exists("ToDo"):
+        rows = frappe.db.sql(
+            """
+            SELECT
+                todo.owner AS user_id,
+                COALESCE(u.full_name, todo.owner) AS full_name,
+                COUNT(todo.name) AS open_tasks,
+                SUM(CASE WHEN task.status IN ('Overdue') THEN 1 ELSE 0 END) AS overdue_tasks
+            FROM `tabToDo` todo
+            JOIN `tabTask` task
+              ON task.name = todo.reference_name
+             AND todo.reference_type = 'Task'
+            LEFT JOIN `tabUser` u ON u.name = todo.owner
+            WHERE todo.status = 'Open'
+              AND task.docstatus < 2
+            GROUP BY todo.owner, full_name
+            ORDER BY open_tasks DESC
+            LIMIT 15
+            """,
+            as_dict=True,
+        )
+        assignments = [
+            {
+                "user": row.get("user_id"),
+                "full_name": row.get("full_name"),
+                "open_tasks": int(row.get("open_tasks") or 0),
+                "overdue_tasks": int(row.get("overdue_tasks") or 0),
+            }
+            for row in rows
+        ]
+
+    recent_tasks = frappe.db.sql(
+        """
+        SELECT
+            task.name,
+            task.subject,
+            task.status,
+            task.exp_end_date,
+            task.priority,
+            GROUP_CONCAT(DISTINCT todo.owner ORDER BY todo.owner SEPARATOR ', ') AS assignees
+        FROM `tabTask` task
+        LEFT JOIN `tabToDo` todo
+          ON todo.reference_type = 'Task'
+         AND todo.reference_name = task.name
+         AND todo.status = 'Open'
+        WHERE task.docstatus < 2
+        GROUP BY task.name, task.subject, task.status, task.exp_end_date, task.priority
+        ORDER BY task.modified DESC
+        LIMIT 20
+        """,
+        as_dict=True,
+    )
+
+    recent_details: List[Dict[str, Any]] = []
+    for row in recent_tasks:
+        recent_details.append(
+            {
+                "task": row.get("name"),
+                "subject": row.get("subject") or row.get("name"),
+                "status": row.get("status"),
+                "due_date": _as_iso(row.get("exp_end_date")),
+                "priority": row.get("priority"),
+                "assignees": (row.get("assignees") or "").split(", ") if row.get("assignees") else [],
+            }
+        )
+
+    return {
+        "total": int(total_tasks or 0),
+        "active": int(active_tasks or 0),
+        "overdue": int(overdue_tasks or 0),
+        "assignments": assignments,
+        "recent": recent_details,
+    }
 
 
 def _as_iso(value: Any) -> Any:
@@ -599,6 +708,7 @@ def collect_admin_context(days: int = 30, *, run_as: str | None = None) -> Dict[
                 "purchase_orders": _collect_total("Purchase Order", "base_grand_total", "transaction_date", start)["count"],
                 "projects": frappe.db.count("Project", filters={"status": ("in", ["Open", "Hold"])}),
             },
+            "tasks": _task_overview(),
             "people": _hr_overview(),
             "records": {
                 "users": _system_user_directory(limit=150),

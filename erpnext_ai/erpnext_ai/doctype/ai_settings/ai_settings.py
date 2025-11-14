@@ -32,7 +32,16 @@ class AISettings(Document):
 
     def resolve_api_key(self) -> str | None:
         env_key = os.getenv("OPENAI_API_KEY") or frappe.conf.get("openai_api_key")
-        return env_key or self.openai_api_key
+        if env_key:
+            return env_key
+
+        if getattr(self, "openai_api_key", None):
+            try:
+                return self.get_password("openai_api_key")
+            except Exception:
+                return self.openai_api_key
+
+        return None
 
     def resolve_service_user(self) -> str:
         return self.service_user or "Administrator"

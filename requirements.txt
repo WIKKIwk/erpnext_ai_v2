@@ -1,0 +1,7 @@
+# ERPNext AI Dependencies
+openai>=1.16.0
+python-telegram-bot>=20.7
+cryptography>=42.0.5
+requests>=2.31.0
+
+# Frappe/ERPNext core packages are distributed separately via bench.

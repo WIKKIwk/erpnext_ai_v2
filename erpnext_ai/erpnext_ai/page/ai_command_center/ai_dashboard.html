@@ -1,0 +1,46 @@
+<div class="ai-dashboard">
+	<div class="ai-period-summary">
+		<div>
+			<h5>{{ __("Period") }}</h5>
+			<p>{{ meta.period_start }} → {{ meta.period_end }} ({{ meta.period_days }} {{ __("days") }})</p>
+		</div>
+	</div>
+
+	<div class="ai-metrics-grid">
+		{% for metric in metrics %}
+		<div class="ai-metric-card">
+			<div class="ai-metric-label">{{ metric.label }}</div>
+			<div class="ai-metric-primary">{{ metric.primary }}</div>
+			{% if metric.secondary %}
+			<div class="ai-metric-secondary">{{ metric.secondary }}</div>
+			{% endif %}
+		</div>
+		{% endfor %}
+	</div>
+
+	<div class="ai-top-customers">
+		<h5>{{ __("Top Customers") }}</h5>
+		{% if top_customers and top_customers|length %}
+		<table class="table table-bordered">
+			<thead>
+				<tr>
+					<th>{{ __("Customer") }}</th>
+					<th class="text-right">{{ __("Invoices") }}</th>
+					<th class="text-right">{{ __("Total") }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				{% for row in top_customers %}
+				<tr>
+					<td>{{ row.customer }}</td>
+					<td class="text-right">{{ row.invoice_count }}</td>
+					<td class="text-right">{{ row.amount_formatted }}</td>
+				</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+		{% else %}
+		<p class="text-muted">{{ __("No customer activity in this period.") }}</p>
+		{% endif %}
+	</div>
+</div>

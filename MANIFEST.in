@@ -1,0 +1,6 @@
+include README.md
+include license.txt
+include requirements.txt
+graft erpnext_ai
+recursive-exclude * __pycache__
+recursive-exclude * *.py[cod]

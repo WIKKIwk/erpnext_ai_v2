@@ -1,0 +1,100 @@
+{
+ "actions": [],
+ "allow_import": 0,
+ "allow_rename": 0,
+ "creation": "2024-10-13 00:00:00.000000",
+ "default_print_format": "",
+ "disable_copy": 0,
+ "docstatus": 0,
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "issingle": 1,
+ "field_order": [
+  "api_provider",
+  "openai_model",
+  "service_user",
+  "openai_api_key"
+ ],
+ "fields": [
+  {
+   "default": "OpenAI",
+   "fieldname": "api_provider",
+   "fieldtype": "Select",
+   "label": "Provider",
+   "options": "OpenAI"
+  },
+  {
+   "default": "gpt-4o",
+   "fieldname": "openai_model",
+   "fieldtype": "Select",
+   "label": "Model",
+   "options": "gpt-4o\ngpt-4o-mini\ngpt-5\ngpt-5-mini"
+  },
+  {
+   "default": "Administrator",
+   "fieldname": "service_user",
+   "fieldtype": "Link",
+   "label": "Run As User",
+   "options": "User",
+   "description": "AI kontekstini yig'ish vaqtida shu foydalanuvchi nomidan ishlaydi."
+  },
+  {
+   "fieldname": "openai_api_key",
+   "fieldtype": "Password",
+   "label": "OpenAI API Key",
+   "description": "Preferred: set OPENAI_API_KEY in bench .env or site config. Use this field only if environment variables are unavailable.",
+   "length": 256
+  }
+ ],
+ "has_web_view": 0,
+ "hide_toolbar": 0,
+ "index_web_pages_for_search": 0,
+ "inline": 0,
+ "is_tree": 0,
+ "links": [],
+ "max_attachments": 0,
+ "modified": "2024-10-13 00:00:00.000000",
+ "module": "ERPNext AI",
+ "name": "AI Settings",
+ "number_of_columns": 0,
+ "owner": "Administrator",
+ "permissions": [
+ {
+  "amend": 0,
+  "cancel": 0,
+  "create": 0,
+  "delete": 0,
+  "email": 1,
+  "export": 1,
+  "print": 1,
+  "read": 1,
+  "report": 1,
+  "role": "System Manager",
+  "share": 1,
+  "submit": 0,
+  "write": 1
+  },
+  {
+   "amend": 0,
+   "cancel": 0,
+   "create": 0,
+   "delete": 0,
+   "email": 1,
+   "export": 0,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "AI Manager",
+   "share": 0,
+   "submit": 0,
+   "write": 0
+  }
+ ],
+ "quick_entry": 0,
+ "show_name_in_global_search": 0,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

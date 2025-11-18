@@ -1,0 +1,86 @@
+{
+ "charts": [],
+ "content": "[{\"id\":\"header_ai\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Chatting with AI</b></span>\",\"col\":12}},{\"id\":\"shortcut_ai_chat\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"AI Chat\",\"col\":6}},{\"id\":\"shortcut_ai_settings\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"AI Settings\",\"col\":6}}]",
+ "creation": "2024-10-13 00:00:00.000000",
+ "custom_blocks": [],
+ "docstatus": 0,
+"doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "🤖",
+ "color": "#5E63FF",
+ "idx": 0,
+ "is_hidden": 0,
+ "label": "Chatting with AI",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "AI Console",
+   "link_count": 2,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "AI Chat",
+   "link_count": 0,
+   "link_to": "ai-chat",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Configuration",
+   "link_count": 1,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "AI Settings",
+   "link_count": 0,
+   "link_to": "AI Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2024-10-13 00:00:00.000000",
+ "module": "ERPNext AI",
+ "name": "Chatting with AI",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "restrict_to_domain": "",
+ "roles": [
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "AI Manager"
+  }
+ ],
+ "sequence_id": 28.0,
+ "shortcuts": [
+  {
+   "color": "Purple",
+   "doc_view": "",
+   "label": "AI Chat",
+   "link_to": "ai-chat",
+   "type": "Page"
+  },
+  {
+   "color": "Blue",
+  "doc_view": "Form",
+   "label": "AI Settings",
+   "link_to": "AI Settings",
+   "type": "DocType"
+  }
+ ],
+ "title": "Chatting with AI"
+}

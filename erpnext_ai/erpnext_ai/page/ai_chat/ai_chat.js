@@ -1389,6 +1389,100 @@ erpnext_ai.pages.AIChat = class AIChat {
 		`;
 	}
 
+	_formatUpdateSummary(updates) {
+		if (!updates) return "";
+		const entries = Object.entries(updates).map(([key, value]) => `${key}: ${value}`);
+		return entries.join(", ");
+	}
+
+	_renderDeletionPreviewTable(items) {
+		const rows = items || [];
+		if (!rows.length) {
+			return `<p class="text-muted mb-0">${__("No items found in preview.")}</p>`;
+		}
+
+		const bodyRows = rows
+			.map((row) => {
+				const status = row.can_delete ? __("Will delete") : __("Skip");
+				const statusClass = row.can_delete ? "badge badge-danger" : "badge badge-secondary";
+				const reason = row.reason ? frappe.utils.escape_html(row.reason) : "";
+				return `
+					<tr>
+						<td>${row.idx || ""}</td>
+						<td><code>${frappe.utils.escape_html(row.item_code || "")}</code></td>
+						<td>${frappe.utils.escape_html(row.item_name || "")}</td>
+						<td><span class="${statusClass}">${status}</span></td>
+						<td class="text-muted">${reason}</td>
+					</tr>
+				`;
+			})
+			.join("");
+
+		return `
+			<div class="table-responsive">
+				<table class="table table-bordered table-sm">
+					<thead>
+						<tr>
+							<th style="width: 48px">#</th>
+							<th>${__("Item Code")}</th>
+							<th>${__("Item Name")}</th>
+							<th style="width: 110px">${__("Action")}</th>
+							<th>${__("Reason")}</th>
+						</tr>
+					</thead>
+					<tbody>${bodyRows}</tbody>
+				</table>
+			</div>
+		`;
+	}
+
+	_renderUpdatePreviewTable(items, updates) {
+		const rows = items || [];
+		if (!rows.length) {
+			return `<p class="text-muted mb-0">${__("No items found in preview.")}</p>`;
+		}
+
+		const summary = this._formatUpdateSummary(updates);
+		const summaryHtml = summary
+			? `<div class="text-muted mb-2">${__("Updates")}: ${frappe.utils.escape_html(summary)}</div>`
+			: "";
+
+		const bodyRows = rows
+			.map((row) => {
+				const status = row.can_update ? __("Will update") : __("Skip");
+				const statusClass = row.can_update ? "badge badge-info" : "badge badge-secondary";
+				const reason = row.reason ? frappe.utils.escape_html(row.reason) : "";
+				return `
+					<tr>
+						<td>${row.idx || ""}</td>
+						<td><code>${frappe.utils.escape_html(row.item_code || "")}</code></td>
+						<td>${frappe.utils.escape_html(row.item_name || "")}</td>
+						<td><span class="${statusClass}">${status}</span></td>
+						<td class="text-muted">${reason}</td>
+					</tr>
+				`;
+			})
+			.join("");
+
+		return `
+			${summaryHtml}
+			<div class="table-responsive">
+				<table class="table table-bordered table-sm">
+					<thead>
+						<tr>
+							<th style="width: 48px">#</th>
+							<th>${__("Item Code")}</th>
+							<th>${__("Item Name")}</th>
+							<th style="width: 110px">${__("Action")}</th>
+							<th>${__("Reason")}</th>
+						</tr>
+					</thead>
+					<tbody>${bodyRows}</tbody>
+				</table>
+			</div>
+		`;
+	}
+
 	_updateActionCard(actionKey) {
 		const cache = this.actionCache[actionKey] || null;
 		if (!cache) return;
@@ -1396,6 +1490,163 @@ erpnext_ai.pages.AIChat = class AIChat {
 		const $cards = (this.$feed && this.$feed.length) ? this.$feed.find(selector) : $(selector);
 		$cards.each((_, el) => {
 			this._renderActionCardContents($(el), actionKey);
+		});
+	}
+
+	_shouldAutoApplyAction(action) {
+		if (!action || typeof action !== "object") return false;
+		const keys = ["auto_apply", "auto_execute", "auto_run", "auto_create"];
+		for (const key of keys) {
+			if (!Object.prototype.hasOwnProperty.call(action, key)) continue;
+			const value = action[key];
+			if (value === 0 || value === "0" || value === false || value === "false") return false;
+			return Boolean(value);
+		}
+		return true;
+	}
+
+	_runItemCreation(actionKey, items, createDisabled) {
+		const cache = this.actionCache[actionKey] || null;
+		if (!cache || cache.creating) return;
+
+		cache.creating = true;
+		this._updateActionCard(actionKey);
+		frappe.call({
+			method: "erpnext_ai.api.create_items_from_preview",
+			args: {
+				items: items,
+				create_disabled: createDisabled,
+			},
+			freeze: true,
+			freeze_message: __("Creating Items..."),
+			callback: (r) => {
+				cache.createdResult = r.message || {};
+				cache.creating = false;
+				this._updateActionCard(actionKey);
+
+				if (this.conversation && this.conversation.name) {
+					const created = (cache.createdResult.created || []).length;
+					const skipped = (cache.createdResult.skipped || []).length;
+					const failed = (cache.createdResult.failed || []).length;
+					const msg = __(
+						"Item creation complete. Created {0}, skipped {1}, failed {2}.",
+						[created, skipped, failed],
+					);
+					frappe.call({
+						method: "erpnext_ai.api.append_ai_message",
+						args: {
+							conversation_name: this.conversation.name,
+							role: "assistant",
+							content: msg,
+							context_json: JSON.stringify({
+								action: "item_create",
+								item_codes: cache.createdResult.created || [],
+							}),
+						},
+					}).then(() => this.fetchConversation());
+				}
+			},
+			error: (err) => {
+				cache.creating = false;
+				cache.error = this.extractErrorMessage(err);
+				this._updateActionCard(actionKey);
+			},
+		});
+	}
+
+	_runItemDeletion(actionKey, itemCodes) {
+		const cache = this.actionCache[actionKey] || null;
+		if (!cache || cache.deleting) return;
+
+		cache.deleting = true;
+		this._updateActionCard(actionKey);
+		frappe.call({
+			method: "erpnext_ai.api.delete_items_from_ai",
+			args: { item_codes: itemCodes },
+			freeze: true,
+			freeze_message: __("Deleting Items..."),
+			callback: (r) => {
+				cache.deleteResult = r.message || {};
+				cache.deleting = false;
+				this._updateActionCard(actionKey);
+
+				if (this.conversation && this.conversation.name) {
+					const deleted = (cache.deleteResult.deleted || []).length;
+					const skipped = (cache.deleteResult.skipped || []).length;
+					const failed = (cache.deleteResult.failed || []).length;
+					const msg = __(
+						"Item deletion complete. Deleted {0}, skipped {1}, failed {2}.",
+						[deleted, skipped, failed],
+					);
+					frappe.call({
+						method: "erpnext_ai.api.append_ai_message",
+						args: {
+							conversation_name: this.conversation.name,
+							role: "assistant",
+							content: msg,
+							context_json: JSON.stringify({
+								action: "item_delete",
+								item_codes: cache.deleteResult.deleted || [],
+							}),
+						},
+					}).then(() => this.fetchConversation());
+				}
+			},
+			error: (err) => {
+				cache.deleting = false;
+				cache.error = this.extractErrorMessage(err);
+				this._updateActionCard(actionKey);
+			},
+		});
+	}
+
+	_runItemUpdate(actionKey, itemCodes, updates) {
+		const cache = this.actionCache[actionKey] || null;
+		if (!cache || cache.updating) return;
+
+		cache.updating = true;
+		this._updateActionCard(actionKey);
+		frappe.call({
+			method: "erpnext_ai.api.apply_item_update_from_ai",
+			args: {
+				item_codes: itemCodes,
+				updates: updates,
+			},
+			freeze: true,
+			freeze_message: __("Updating Items..."),
+			callback: (r) => {
+				cache.updateResult = r.message || {};
+				cache.updating = false;
+				this._updateActionCard(actionKey);
+
+				if (this.conversation && this.conversation.name) {
+					const updated = (cache.updateResult.updated || []).length;
+					const skipped = (cache.updateResult.skipped || []).length;
+					const failed = (cache.updateResult.failed || []).length;
+					const msg = __(
+						"Item update complete. Updated {0}, skipped {1}, failed {2}.",
+						[updated, skipped, failed],
+					);
+					frappe.call({
+						method: "erpnext_ai.api.append_ai_message",
+						args: {
+							conversation_name: this.conversation.name,
+							role: "assistant",
+							content: msg,
+							context_json: JSON.stringify({
+								action: "item_update",
+								item_codes: cache.updateResult.updated || [],
+								updates: cache.preview && cache.preview.updates ? cache.preview.updates : {},
+							}),
+						},
+					}).then(() => this.fetchConversation());
+				}
+			},
+			error: (err) => {
+				cache.updating = false;
+				cache.error = this.extractErrorMessage(err);
+				this._updateActionCard(actionKey);
+			},
 		});
 	}
 
@@ -1417,6 +1668,75 @@ erpnext_ai.pages.AIChat = class AIChat {
 		}
 
 		if (cache.preview) {
+			if (actionType === "preview_item_deletion" || actionType === "preview_item_deletion_series") {
+				$body.append($(this._renderDeletionPreviewTable(cache.preview.items || [])));
+
+				const deleteResult = cache.deleteResult || null;
+				if (deleteResult) {
+					const deleted = deleteResult.deleted || [];
+					const skipped = deleteResult.skipped || [];
+					const failed = deleteResult.failed || [];
+					const summary = `${__("Deleted")}: ${deleted.length} · ${__("Skipped")}: ${skipped.length} · ${__("Failed")}: ${failed.length}`;
+					$footer.append($(`<div class="text-muted mt-2">${frappe.utils.escape_html(summary)}</div>`));
+					return;
+				}
+
+				const items = cache.preview.items || [];
+				const itemCodes = items.map((row) => row.item_code);
+				const deletableCount = items.filter((row) => row.can_delete).length;
+				const shouldAutoApply = this._shouldAutoApplyAction(action);
+				if (shouldAutoApply && !cache.autoApplied && !cache.deleting && deletableCount > 0) {
+					cache.autoApplied = true;
+					this._runItemDeletion(actionKey, itemCodes);
+				}
+				const $btn = $(
+					`<button type="button" class="btn btn-sm btn-danger mt-2">${__("Delete Items")} (${deletableCount})</button>`,
+				);
+				if (cache.deleting) {
+					$btn.prop("disabled", true).text(__("Deleting..."));
+				}
+
+				$btn.on("click", () => this._runItemDeletion(actionKey, itemCodes));
+
+				$footer.append($btn);
+				return;
+			}
+
+			if (actionType === "preview_item_update" || actionType === "preview_item_update_series") {
+				$body.append($(this._renderUpdatePreviewTable(cache.preview.items || [], cache.preview.updates || {})));
+
+				const updateResult = cache.updateResult || null;
+				if (updateResult) {
+					const updated = updateResult.updated || [];
+					const skipped = updateResult.skipped || [];
+					const failed = updateResult.failed || [];
+					const summary = `${__("Updated")}: ${updated.length} · ${__("Skipped")}: ${skipped.length} · ${__("Failed")}: ${failed.length}`;
+					$footer.append($(`<div class="text-muted mt-2">${frappe.utils.escape_html(summary)}</div>`));
+					return;
+				}
+
+				const items = cache.preview.items || [];
+				const itemCodes = items.map((row) => row.item_code);
+				const updates = cache.preview.updates || {};
+				const updatableCount = items.filter((row) => row.can_update).length;
+				const shouldAutoApply = this._shouldAutoApplyAction(action);
+				if (shouldAutoApply && !cache.autoApplied && !cache.updating && updatableCount > 0) {
+					cache.autoApplied = true;
+					this._runItemUpdate(actionKey, itemCodes, updates);
+				}
+				const $btn = $(
+					`<button type="button" class="btn btn-sm btn-primary mt-2">${__("Apply Changes")} (${updatableCount})</button>`,
+				);
+				if (cache.updating) {
+					$btn.prop("disabled", true).text(__("Updating..."));
+				}
+
+				$btn.on("click", () => this._runItemUpdate(actionKey, itemCodes, updates));
+
+				$footer.append($btn);
+				return;
+			}
+
 			const warnings = cache.preview.warnings || [];
 			if (warnings.length) {
 				const warningHtml = warnings.map((w) => frappe.utils.escape_html(w)).join("<br>");
@@ -1431,15 +1751,18 @@ erpnext_ai.pages.AIChat = class AIChat {
 				const skipped = createdResult.skipped || [];
 				const failed = createdResult.failed || [];
 				const summary = `${__("Created")}: ${created.length} · ${__("Skipped")}: ${skipped.length} · ${__("Failed")}: ${failed.length}`;
-				$footer.append(
-					$(`<div class="text-muted mt-2">${frappe.utils.escape_html(summary)}</div>`),
-				);
+				$footer.append($(`<div class="text-muted mt-2">${frappe.utils.escape_html(summary)}</div>`));
 				return;
 			}
 
 			const items = cache.preview.items || [];
 			const newCount = items.filter((row) => !row.exists).length;
 			const createDisabled = action.create_disabled === 0 ? 0 : 1;
+			const shouldAutoApply = this._shouldAutoApplyAction(action);
+			if (shouldAutoApply && !cache.autoApplied && !cache.creating && newCount > 0) {
+				cache.autoApplied = true;
+				this._runItemCreation(actionKey, items, createDisabled);
+			}
 			const $btn = $(
 				`<button type="button" class="btn btn-sm btn-primary mt-2">${__("Create Items")} (${newCount})</button>`,
 			);
@@ -1447,53 +1770,7 @@ erpnext_ai.pages.AIChat = class AIChat {
 				$btn.prop("disabled", true).text(__("Creating..."));
 			}
 
-			$btn.on("click", () => {
-				if (cache.creating) return;
-				frappe.confirm(
-					__("Create {0} new Items? Existing Items will be skipped.", [newCount]),
-					() => {
-						cache.creating = true;
-						this._updateActionCard(actionKey);
-						frappe.call({
-							method: "erpnext_ai.api.create_items_from_preview",
-							args: {
-								items: items,
-								create_disabled: createDisabled,
-							},
-							freeze: true,
-							freeze_message: __("Creating Items..."),
-							callback: (r) => {
-								cache.createdResult = r.message || {};
-								cache.creating = false;
-								this._updateActionCard(actionKey);
-
-								if (this.conversation && this.conversation.name) {
-									const created = (cache.createdResult.created || []).length;
-									const skipped = (cache.createdResult.skipped || []).length;
-									const failed = (cache.createdResult.failed || []).length;
-									const msg = __(
-										"Item creation complete. Created {0}, skipped {1}, failed {2}.",
-										[created, skipped, failed],
-									);
-									frappe.call({
-										method: "erpnext_ai.api.append_ai_message",
-										args: {
-											conversation_name: this.conversation.name,
-											role: "assistant",
-											content: msg,
-										},
-									}).then(() => this.fetchConversation());
-								}
-							},
-							error: (err) => {
-								cache.creating = false;
-								cache.error = this.extractErrorMessage(err);
-								this._updateActionCard(actionKey);
-							},
-						});
-					},
-				);
-			});
+			$btn.on("click", () => this._runItemCreation(actionKey, items, createDisabled));
 
 			$footer.append($btn);
 			if (createDisabled) {
@@ -1510,6 +1787,111 @@ erpnext_ai.pages.AIChat = class AIChat {
 
 		if (cache.loading) {
 			$body.append($(`<div class="text-muted">${__("Preparing preview...")}</div>`));
+			return;
+		}
+
+		if (
+			actionType === "preview_item_deletion" ||
+			actionType === "preview_item_deletion_series" ||
+			actionType === "preview_item_update" ||
+			actionType === "preview_item_update_series"
+		) {
+			cache.loading = true;
+			$body.append($(`<div class="text-muted">${__("Preparing preview...")}</div>`));
+
+			if (actionType === "preview_item_deletion_series") {
+				const codePrefix = (action.code_prefix || "").toString();
+				const asInt = (value, fallback) => {
+					const parsed = parseInt(value, 10);
+					return Number.isFinite(parsed) ? parsed : fallback;
+				};
+				const count = asInt(action.count, 20);
+				const start = asInt(action.start, 1);
+				const pad = asInt(action.pad, 0);
+
+				if (!codePrefix) {
+					cache.loading = false;
+					cache.error = __("Missing code_prefix in action block.");
+					this._updateActionCard(actionKey);
+					return;
+				}
+
+				frappe.call({
+					method: "erpnext_ai.api.preview_item_deletion_request_series",
+					args: { code_prefix: codePrefix, count, start, pad },
+					callback: (r) => {
+						cache.preview = r.message || {};
+						cache.loading = false;
+						this._updateActionCard(actionKey);
+					},
+					error: (err) => {
+						cache.loading = false;
+						cache.error = this.extractErrorMessage(err);
+						this._updateActionCard(actionKey);
+					},
+				});
+				return;
+			}
+
+			if (actionType === "preview_item_update_series") {
+				const codePrefix = (action.code_prefix || "").toString();
+				const asInt = (value, fallback) => {
+					const parsed = parseInt(value, 10);
+					return Number.isFinite(parsed) ? parsed : fallback;
+				};
+				const count = asInt(action.count, 20);
+				const start = asInt(action.start, 1);
+				const pad = asInt(action.pad, 0);
+				const updates = action.updates || {};
+
+				if (!codePrefix) {
+					cache.loading = false;
+					cache.error = __("Missing code_prefix in action block.");
+					this._updateActionCard(actionKey);
+					return;
+				}
+
+				frappe.call({
+					method: "erpnext_ai.api.preview_item_update_request_series",
+					args: { code_prefix: codePrefix, count, start, pad, updates },
+					callback: (r) => {
+						cache.preview = r.message || {};
+						cache.loading = false;
+						this._updateActionCard(actionKey);
+					},
+					error: (err) => {
+						cache.loading = false;
+						cache.error = this.extractErrorMessage(err);
+						this._updateActionCard(actionKey);
+					},
+				});
+				return;
+			}
+
+			const itemCodes = action.item_codes || action.codes || [];
+			const updates = action.updates || {};
+			const method =
+				actionType === "preview_item_deletion"
+					? "erpnext_ai.api.preview_item_deletion_request"
+					: "erpnext_ai.api.preview_item_update_request";
+
+			frappe.call({
+				method,
+				args: {
+					item_codes: itemCodes,
+					updates,
+				},
+				callback: (r) => {
+					cache.preview = r.message || {};
+					cache.loading = false;
+					this._updateActionCard(actionKey);
+				},
+				error: (err) => {
+					cache.loading = false;
+					cache.error = this.extractErrorMessage(err);
+					this._updateActionCard(actionKey);
+				},
+			});
 			return;
 		}
 
@@ -1609,12 +1991,23 @@ erpnext_ai.pages.AIChat = class AIChat {
 		const list = actions || [];
 		if (!list.length) return;
 
+		const allowedActions = new Set([
+			"preview_item_creation",
+			"preview_item_creation_series",
+			"preview_item_deletion",
+			"preview_item_deletion_series",
+			"preview_item_update",
+			"preview_item_update_series",
+		]);
+
 		const $bubble = $message.find(".ai-chat-bubble").first();
 		if (!$bubble.length) return;
 
 		list.forEach((action, idx) => {
 			if (!action) return;
-			if (!["preview_item_creation", "preview_item_creation_series"].includes(action.action)) return;
+			const actionType = action.action || "";
+			if (!allowedActions.has(actionType)) return;
+			const shouldAutoApply = this._shouldAutoApplyAction(action);
 
 			const messageKeyRaw = (msg && (msg.name || msg.creation)) ? (msg.name || msg.creation) : "msg";
 			const messageKey = String(messageKeyRaw).replace(/[^A-Za-z0-9_-]/g, "_");
@@ -1624,10 +2017,18 @@ erpnext_ai.pages.AIChat = class AIChat {
 				this.actionCache[actionKey] = { action };
 			}
 
+			let heading = __("Item creation proposal");
+			if (actionType.startsWith("preview_item_deletion")) {
+				heading = __("Item deletion proposal");
+			} else if (actionType.startsWith("preview_item_update")) {
+				heading = __("Item update proposal");
+			}
+
+			const hiddenStyle = shouldAutoApply ? "display: none;" : "";
 			const $card = $(`
-				<div class="ai-chat-action-card card" data-ai-action-key="${actionKey}">
+				<div class="ai-chat-action-card card" data-ai-action-key="${actionKey}" style="${hiddenStyle}">
 					<div class="card-body">
-						<div class="text-muted mb-2">${__("Item creation proposal")}</div>
+						<div class="text-muted mb-2">${heading}</div>
 						<div class="ai-chat-action-body"></div>
 						<div class="ai-chat-action-footer"></div>
 					</div>
@@ -1670,7 +2071,12 @@ erpnext_ai.pages.AIChat = class AIChat {
 			if (role === "assistant") {
 				const parsed = this.extractActions(msg.content);
 				extractedActions = parsed.actions || [];
-				body = this.renderMarkdown(parsed.text || msg.content);
+				const cleanedText = Object.prototype.hasOwnProperty.call(parsed, "text")
+					? parsed.text
+					: msg.content;
+				const hasAutoApply = extractedActions.some((action) => this._shouldAutoApplyAction(action));
+				const finalText = hasAutoApply ? "" : cleanedText;
+				body = this.renderMarkdown(finalText);
 			} else {
 				body = this.renderMarkdown(msg.content);
 			}

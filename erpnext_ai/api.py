@@ -6,7 +6,17 @@ import frappe
 
 from erpnext_ai.erpnext_ai.services.admin_summary import collect_admin_context
 from erpnext_ai.erpnext_ai.services import chat
-from erpnext_ai.erpnext_ai.services.item_creator import create_items, preview_item_batch, preview_item_series
+from erpnext_ai.erpnext_ai.services.item_creator import (
+    apply_item_update,
+    create_items,
+    delete_items,
+    preview_item_batch,
+    preview_item_deletion,
+    preview_item_deletion_series,
+    preview_item_series,
+    preview_item_update,
+    preview_item_update_series,
+)
 from erpnext_ai.erpnext_ai.services.report_runner import generate_admin_report
 
 
@@ -101,3 +111,48 @@ def preview_item_creation_series(
         start=start,
         pad=pad,
     )
+
+
+@frappe.whitelist()
+def preview_item_deletion_request(item_codes: Any) -> Dict[str, Any]:
+    payload = frappe.parse_json(item_codes) if item_codes is not None else []
+    return preview_item_deletion(payload)
+
+
+@frappe.whitelist()
+def preview_item_deletion_request_series(
+    code_prefix: str,
+    count: int = 20,
+    start: int = 1,
+    pad: int = 0,
+) -> Dict[str, Any]:
+    return preview_item_deletion_series(code_prefix=code_prefix, count=count, start=start, pad=pad)
+
+
+@frappe.whitelist()
+def delete_items_from_ai(item_codes: Any) -> Dict[str, Any]:
+    payload = frappe.parse_json(item_codes) if item_codes is not None else []
+    return delete_items(payload)
+
+
+@frappe.whitelist()
+def preview_item_update_request(item_codes: Any, updates: Any) -> Dict[str, Any]:
+    payload = frappe.parse_json(item_codes) if item_codes is not None else []
+    return preview_item_update(payload, updates)
+
+
+@frappe.whitelist()
+def preview_item_update_request_series(
+    code_prefix: str,
+    updates: Any,
+    count: int = 20,
+    start: int = 1,
+    pad: int = 0,
+) -> Dict[str, Any]:
+    return preview_item_update_series(code_prefix=code_prefix, count=count, start=start, pad=pad, updates=updates)
+
+
+@frappe.whitelist()
+def apply_item_update_from_ai(item_codes: Any, updates: Any) -> Dict[str, Any]:
+    payload = frappe.parse_json(item_codes) if item_codes is not None else []
+    return apply_item_update(payload, updates)

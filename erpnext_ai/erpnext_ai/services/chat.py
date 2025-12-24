@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict
+import re
+from typing import Any, Dict, Iterable, List
 
 import frappe
 
 from erpnext_ai.erpnext_ai.doctype.ai_conversation.ai_conversation import AIConversation
 from erpnext_ai.erpnext_ai.doctype.ai_settings.ai_settings import AISettings, DEFAULT_TIMEOUT
 from .admin_summary import collect_admin_context
+from .item_creator import delete_items
 from .llm_client import generate_completion
 
 
@@ -18,30 +20,132 @@ CHAT_CONTEXT_PROMPT = (
 
 ACTION_PROTOCOL_PROMPT = """You can help users perform safe ERPNext actions via the AI Chat UI.
 
-When the user asks to create Items, do NOT say you cannot. Instead, propose a preview using an *action block*.
+When the user asks to create, update, or delete Items, do NOT say you cannot. Instead, propose a preview using an *action block*.
 
-Return ONLY the action block as a fenced code block named `erpnext_ai_action`. The UI will show a preview and a Create button.
+Return ONLY the action block as a fenced code block named `erpnext_ai_action`. The UI will show a preview and an action button.
 
 Use one of these actions:
 
 1) For a custom list (few items): `preview_item_creation`
 
 ```erpnext_ai_action
-{"action":"preview_item_creation","item_group":"Products","stock_uom":"Nos","raw_text":"ABC-001 - Washer\\nABC-002 - Bolt","create_disabled":1}
+{"action":"preview_item_creation","item_group":"Products","stock_uom":"Nos","raw_text":"ABC-001 - Washer\\nABC-002 - Bolt","create_disabled":1,"auto_apply":1}
 ```
 
 2) For numbered items like name_1..name_20 and code_1..code_20: `preview_item_creation_series` (preferred for large batches)
 
 ```erpnext_ai_action
-{"action":"preview_item_creation_series","item_group":"Raw Material","stock_uom":"Nos","name_prefix":"plyonka_","code_prefix":"pl_","start":1,"count":20,"pad":0,"create_disabled":1}
+{"action":"preview_item_creation_series","item_group":"Raw Material","stock_uom":"Nos","name_prefix":"plyonka_","code_prefix":"pl_","start":1,"count":20,"pad":0,"create_disabled":1,"auto_apply":1}
+```
+
+3) For deletions (only items created by ERPNext AI will be deleted)
+
+```erpnext_ai_action
+{"action":"preview_item_deletion_series","code_prefix":"pl_","start":1,"count":20,"pad":0,"auto_apply":1}
+```
+
+4) For updates (only items created by ERPNext AI will be updated)
+
+```erpnext_ai_action
+{"action":"preview_item_update_series","code_prefix":"pl_","start":1,"count":20,"pad":0,"updates":{"item_group":"Raw Material","stock_uom":"Nos"},"auto_apply":1}
 ```
 
 Rules:
-- Only use this for user-requested Item creation.
-- Always ask for confirmation before creation (the UI will confirm).
+- Only use this for user-requested Item operations.
+- Do not ask the user for confirmation in text; set `"auto_apply": 1` to run immediately.
 - Do not invent Item Group / UOM values. If missing, ask the user to provide them.
 - Max 200 items. No pricing, no stock, no extra fields.
 """
+
+DELETE_INTENT_PATTERNS = (
+    r"\bo['’]chir",
+    r"\bo‘chir",
+    r"\bochir",
+    r"\bdelete\b",
+    r"\bremove\b",
+    r"\bolib tashla",
+    r"yo['’]q qil",
+    r"yoq qil",
+)
+
+DELETE_NEGATIVE_PATTERNS = (
+    r"o['’]chirma",
+    r"o‘chirma",
+    r"ochirma",
+    r"qilmang",
+    r"qilma",
+    r"delete qilmang",
+    r"remove qilmang",
+    r"don't delete",
+    r"do not delete",
+)
+
+RECENT_REFERENCE_PATTERNS = (
+    r"\buni\b",
+    r"\bbuni\b",
+    r"\bshuni\b",
+    r"\bo['’]sha\b",
+    r"\bo‘sha\b",
+    r"\bo['’]shani\b",
+    r"\bo‘shani\b",
+    r"\bso['’]nggi\b",
+    r"\bso‘nggi\b",
+    r"\boxirgi\b",
+    r"\blast\b",
+    r"\bprevious\b",
+)
+
+ITEM_CREATE_ACTIONS = ("item_create", "item_creation")
+
+
+def _matches_patterns(patterns: Iterable[str], text: str) -> bool:
+    return any(re.search(pattern, text, re.IGNORECASE) for pattern in patterns)
+
+
+def _is_delete_intent(content: str) -> bool:
+    if not content:
+        return False
+    lowered = content.lower()
+    if _matches_patterns(DELETE_NEGATIVE_PATTERNS, lowered):
+        return False
+    return _matches_patterns(DELETE_INTENT_PATTERNS, lowered)
+
+
+def _should_auto_delete(content: str, recent_codes: List[str]) -> bool:
+    if not _is_delete_intent(content):
+        return False
+    if not recent_codes:
+        return False
+    lowered = content.lower()
+    if _matches_patterns(RECENT_REFERENCE_PATTERNS, lowered):
+        return True
+    for code in recent_codes:
+        escaped = re.escape(code.lower())
+        if re.search(rf"\\b{escaped}\\b", lowered):
+            return True
+    return False
+
+
+def _extract_recent_item_codes(doc: AIConversation, actions: Iterable[str]) -> List[str]:
+    action_set = set(actions)
+    for msg in reversed(doc.messages or []):
+        if not msg.context_json:
+            continue
+        try:
+            payload = json.loads(msg.context_json)
+        except Exception:
+            continue
+        if payload.get("action") not in action_set:
+            continue
+        codes = payload.get("item_codes") or payload.get("items") or []
+        if isinstance(codes, str):
+            codes = [codes]
+        if not isinstance(codes, list):
+            continue
+        cleaned = [str(code).strip() for code in codes if str(code).strip()]
+        if cleaned:
+            return cleaned
+    return []
 
 
 def _coerce_days(days: Any) -> int:
@@ -451,6 +555,24 @@ def send_message(conversation_name: str, content: str, days: int = 30) -> Dict[s
     doc.append_message("user", content)
 
     base_payload = [dict(message) for message in doc.to_message_payload()]
+
+    recent_codes = _extract_recent_item_codes(doc, ITEM_CREATE_ACTIONS)
+    if _should_auto_delete(content, recent_codes):
+        delete_result = delete_items(recent_codes, allow_unmarked_codes=recent_codes)
+        deleted = delete_result.get("deleted", []) or []
+        skipped = delete_result.get("skipped", []) or []
+        failed = delete_result.get("failed", []) or []
+        summary = (
+            f"Item deletion complete. Deleted {len(deleted)}, skipped {len(skipped)}, failed {len(failed)}."
+        )
+        context_json = json.dumps(
+            {"action": "item_delete", "item_codes": deleted},
+            default=str,
+        )
+        doc.append_message("assistant", summary, context_json=context_json)
+        doc.save(ignore_permissions=True)
+        frappe.db.commit()
+        return _serialize_conversation(doc)
 
     service_user = settings.resolve_service_user()
 

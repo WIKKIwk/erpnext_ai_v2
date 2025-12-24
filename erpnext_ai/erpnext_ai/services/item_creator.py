@@ -13,6 +13,8 @@ from .llm_client import generate_completion as generate_llm_completion
 
 MAX_ITEM_BATCH_SIZE = 200
 ITEM_CODE_MAX_LENGTH = 140
+AI_CREATED_FIELD = "erpnext_ai_created"
+ALLOWED_UPDATE_FIELDS = {"item_name", "item_group", "stock_uom", "disabled", "description"}
 
 
 @dataclass(frozen=True)
@@ -29,7 +31,7 @@ def ensure_item_creation_enabled() -> None:
 
     if not getattr(settings, "allow_item_creation", 0):
         frappe.throw(
-            "AI Item Creation is disabled. Enable it in AI Settings before creating Items.",
+            "AI Item operations are disabled. Enable them in AI Settings before continuing.",
             frappe.PermissionError,
         )
 
@@ -56,6 +58,114 @@ def _resolve_link_value(doctype: str, value: str) -> str:
     )
     if rows and rows[0] and rows[0][0]:
         return rows[0][0]
+    return cleaned
+
+
+def _has_ai_created_field() -> bool:
+    cached = getattr(frappe.flags, "erpnext_ai_has_item_flag", None)
+    if cached is None:
+        cached = AI_CREATED_FIELD in frappe.db.get_table_columns("Item")
+        frappe.flags.erpnext_ai_has_item_flag = cached
+    return bool(cached)
+
+
+def _normalise_item_codes(values: Any) -> List[str]:
+    if values is None:
+        return []
+    if isinstance(values, (list, tuple, set)):
+        raw_values = list(values)
+    elif isinstance(values, str):
+        raw_values = re.split(r"[,\n]+", values)
+    else:
+        raw_values = [values]
+
+    seen: set[str] = set()
+    result: List[str] = []
+    for entry in raw_values:
+        value = str(entry or "").strip()
+        if not value:
+            continue
+        if value in seen:
+            continue
+        seen.add(value)
+        result.append(value)
+    return result
+
+
+def _series_item_codes(code_prefix: str, count: int, start: int, pad: int) -> List[str]:
+    count_int = _coerce_int(count, 0)
+    start_int = _coerce_int(start, 1)
+    pad_int = max(_coerce_int(pad, 0), 0)
+
+    if count_int < 1:
+        return []
+
+    def _format_number(value: int) -> str:
+        if pad_int:
+            return f"{value:0{pad_int}d}"
+        return str(value)
+
+    prefix = (code_prefix or "").strip()
+    return [f"{prefix}{_format_number(start_int + offset)}" for offset in range(count_int)]
+
+
+def _lookup_item(item_code: str) -> Optional[Dict[str, Any]]:
+    if not item_code:
+        return None
+    fields = ["name", "item_code", "item_name"]
+    if _has_ai_created_field():
+        fields.append(AI_CREATED_FIELD)
+
+    data = frappe.db.get_value("Item", {"item_code": item_code}, fields, as_dict=True)
+    if data:
+        return data
+    return frappe.db.get_value("Item", item_code, fields, as_dict=True)
+
+
+def _is_ai_created(item_row: Optional[Dict[str, Any]]) -> bool:
+    if not item_row or not _has_ai_created_field():
+        return False
+    return bool(item_row.get(AI_CREATED_FIELD))
+
+
+def _validate_item_updates(updates: Any) -> Dict[str, Any]:
+    if updates is None:
+        frappe.throw("Updates are required.", frappe.ValidationError)  # noqa: TRY003
+    if isinstance(updates, str):
+        try:
+            updates = json.loads(updates)
+        except json.JSONDecodeError as exc:
+            frappe.throw(f"Invalid updates JSON: {exc}", frappe.ValidationError)  # noqa: TRY003
+
+    if not isinstance(updates, dict):
+        frappe.throw("Updates must be a JSON object.", frappe.ValidationError)  # noqa: TRY003
+
+    cleaned: Dict[str, Any] = {}
+    for field, value in updates.items():
+        if field not in ALLOWED_UPDATE_FIELDS:
+            continue
+        if field == "item_name":
+            name_value = str(value or "").strip()
+            if not name_value:
+                frappe.throw("Item Name cannot be empty.", frappe.ValidationError)  # noqa: TRY003
+            cleaned[field] = name_value
+        elif field == "item_group":
+            group_value = _resolve_link_value("Item Group", str(value or "").strip())
+            if not frappe.db.exists("Item Group", group_value):
+                frappe.throw("Invalid Item Group.", frappe.ValidationError)  # noqa: TRY003
+            cleaned[field] = group_value
+        elif field == "stock_uom":
+            uom_value = _resolve_link_value("UOM", str(value or "").strip())
+            if not frappe.db.exists("UOM", uom_value):
+                frappe.throw("Invalid Stock UOM.", frappe.ValidationError)  # noqa: TRY003
+            cleaned[field] = uom_value
+        elif field == "disabled":
+            cleaned[field] = 1 if bool(value) else 0
+        elif field == "description":
+            cleaned[field] = str(value or "")
+
+    if not cleaned:
+        frappe.throw("No supported fields to update.", frappe.ValidationError)  # noqa: TRY003
     return cleaned
 
 
@@ -387,6 +497,8 @@ def create_items(
             doc.stock_uom = stock_uom
             if hasattr(doc, "disabled") and create_disabled:
                 doc.disabled = 1
+            if _has_ai_created_field():
+                doc.set(AI_CREATED_FIELD, 1)
             doc.insert()
         except Exception as exc:  # pragma: no cover - depends on ERPNext validations
             failed.append({"item_code": item_code, "item_name": item_name, "error": str(exc)})
@@ -396,3 +508,179 @@ def create_items(
 
     frappe.db.commit()
     return {"created": created, "skipped": skipped, "failed": failed}
+
+
+def preview_item_deletion(item_codes: Any) -> Dict[str, Any]:
+    ensure_item_creation_enabled()
+
+    if not frappe.has_permission("Item", "delete"):
+        frappe.throw("You are not permitted to delete Items.", frappe.PermissionError)  # noqa: TRY003
+
+    codes = _normalise_item_codes(item_codes)
+    rows: List[Dict[str, Any]] = []
+    for idx, code in enumerate(codes, start=1):
+        item_row = _lookup_item(code)
+        if not item_row:
+            rows.append(
+                {
+                    "idx": idx,
+                    "item_code": code,
+                    "item_name": "",
+                    "ai_created": False,
+                    "can_delete": False,
+                    "reason": "Item not found.",
+                }
+            )
+            continue
+
+        ai_created = _is_ai_created(item_row)
+        reason = "" if ai_created else "Not created by ERPNext AI."
+        rows.append(
+            {
+                "idx": idx,
+                "item_code": item_row.get("item_code") or code,
+                "item_name": item_row.get("item_name") or "",
+                "ai_created": ai_created,
+                "can_delete": ai_created,
+                "reason": reason,
+            }
+        )
+
+    return {"items": rows}
+
+
+def preview_item_deletion_series(
+    *,
+    code_prefix: str,
+    count: int = 20,
+    start: int = 1,
+    pad: int = 0,
+) -> Dict[str, Any]:
+    codes = _series_item_codes(code_prefix=code_prefix, count=count, start=start, pad=pad)
+    if not codes:
+        frappe.throw("Count must be at least 1.", frappe.ValidationError)  # noqa: TRY003
+    return preview_item_deletion(codes)
+
+
+def delete_items(
+    item_codes: Any,
+    allow_unmarked_codes: Optional[Sequence[str]] = None,
+) -> Dict[str, Any]:
+    ensure_item_creation_enabled()
+
+    if not frappe.has_permission("Item", "delete"):
+        frappe.throw("You are not permitted to delete Items.", frappe.PermissionError)  # noqa: TRY003
+
+    deleted: List[str] = []
+    skipped: List[Dict[str, Any]] = []
+    failed: List[Dict[str, Any]] = []
+
+    codes = _normalise_item_codes(item_codes)
+    allow_set = set(_normalise_item_codes(allow_unmarked_codes)) if allow_unmarked_codes else set()
+    for code in codes:
+        item_row = _lookup_item(code)
+        if not item_row:
+            skipped.append({"item_code": code, "reason": "Item not found"})
+            continue
+        if not _is_ai_created(item_row):
+            item_code_value = (item_row.get("item_code") or code or "").strip()
+            name_value = str(item_row.get("name") or "").strip()
+            if not allow_set or (item_code_value not in allow_set and name_value not in allow_set):
+                skipped.append({"item_code": code, "reason": "Not created by ERPNext AI"})
+                continue
+        try:
+            frappe.delete_doc("Item", item_row["name"], ignore_permissions=False)
+        except Exception as exc:  # pragma: no cover - depends on ERPNext validations
+            failed.append({"item_code": code, "error": str(exc)})
+            continue
+        deleted.append(code)
+
+    frappe.db.commit()
+    return {"deleted": deleted, "skipped": skipped, "failed": failed}
+
+
+def preview_item_update(item_codes: Any, updates: Any) -> Dict[str, Any]:
+    ensure_item_creation_enabled()
+
+    if not frappe.has_permission("Item", "write"):
+        frappe.throw("You are not permitted to edit Items.", frappe.PermissionError)  # noqa: TRY003
+
+    cleaned_updates = _validate_item_updates(updates)
+    codes = _normalise_item_codes(item_codes)
+    rows: List[Dict[str, Any]] = []
+    for idx, code in enumerate(codes, start=1):
+        item_row = _lookup_item(code)
+        if not item_row:
+            rows.append(
+                {
+                    "idx": idx,
+                    "item_code": code,
+                    "item_name": "",
+                    "ai_created": False,
+                    "can_update": False,
+                    "reason": "Item not found.",
+                }
+            )
+            continue
+        ai_created = _is_ai_created(item_row)
+        reason = "" if ai_created else "Not created by ERPNext AI."
+        rows.append(
+            {
+                "idx": idx,
+                "item_code": item_row.get("item_code") or code,
+                "item_name": item_row.get("item_name") or "",
+                "ai_created": ai_created,
+                "can_update": ai_created,
+                "reason": reason,
+            }
+        )
+
+    return {"items": rows, "updates": cleaned_updates}
+
+
+def preview_item_update_series(
+    *,
+    code_prefix: str,
+    updates: Any,
+    count: int = 20,
+    start: int = 1,
+    pad: int = 0,
+) -> Dict[str, Any]:
+    codes = _series_item_codes(code_prefix=code_prefix, count=count, start=start, pad=pad)
+    if not codes:
+        frappe.throw("Count must be at least 1.", frappe.ValidationError)  # noqa: TRY003
+    return preview_item_update(codes, updates)
+
+
+def apply_item_update(item_codes: Any, updates: Any) -> Dict[str, Any]:
+    ensure_item_creation_enabled()
+
+    if not frappe.has_permission("Item", "write"):
+        frappe.throw("You are not permitted to edit Items.", frappe.PermissionError)  # noqa: TRY003
+
+    cleaned_updates = _validate_item_updates(updates)
+    updated: List[str] = []
+    skipped: List[Dict[str, Any]] = []
+    failed: List[Dict[str, Any]] = []
+
+    codes = _normalise_item_codes(item_codes)
+    for code in codes:
+        item_row = _lookup_item(code)
+        if not item_row:
+            skipped.append({"item_code": code, "reason": "Item not found"})
+            continue
+        if not _is_ai_created(item_row):
+            skipped.append({"item_code": code, "reason": "Not created by ERPNext AI"})
+            continue
+        try:
+            doc = frappe.get_doc("Item", item_row["name"])
+            for field, value in cleaned_updates.items():
+                doc.set(field, value)
+            doc.save()
+        except Exception as exc:  # pragma: no cover - depends on ERPNext validations
+            failed.append({"item_code": code, "error": str(exc)})
+            continue
+        updated.append(code)
+
+    frappe.db.commit()
+    return {"updated": updated, "skipped": skipped, "failed": failed}

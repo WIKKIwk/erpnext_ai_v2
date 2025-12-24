@@ -14,7 +14,8 @@
   "api_provider",
   "openai_model",
   "service_user",
-  "openai_api_key"
+  "openai_api_key",
+  "gemini_api_key"
  ],
  "fields": [
   {
@@ -22,14 +23,14 @@
    "fieldname": "api_provider",
    "fieldtype": "Select",
    "label": "Provider",
-   "options": "OpenAI"
+   "options": "OpenAI\nGemini"
   },
   {
    "default": "gpt-4o",
    "fieldname": "openai_model",
    "fieldtype": "Select",
    "label": "Model",
-   "options": "gpt-4o\ngpt-4o-mini\ngpt-5\ngpt-5-mini"
+   "options": "gpt-4o\ngpt-4o-mini\ngpt-5\ngpt-5-mini\ngemini-2.5-flash"
   },
   {
    "default": "Administrator",
@@ -44,7 +45,16 @@
    "fieldtype": "Password",
    "label": "OpenAI API Key",
    "description": "Preferred: set OPENAI_API_KEY in bench .env or site config. Use this field only if environment variables are unavailable.",
-   "length": 256
+   "length": 256,
+   "depends_on": "eval:doc.api_provider==\"OpenAI\""
+  },
+  {
+   "fieldname": "gemini_api_key",
+   "fieldtype": "Password",
+   "label": "Gemini API Key",
+   "description": "Preferred: set GEMINI_API_KEY (or GOOGLE_API_KEY) in bench .env or site config. Use this field only if environment variables are unavailable.",
+   "length": 256,
+   "depends_on": "eval:doc.api_provider==\"Gemini\""
   }
  ],
  "has_web_view": 0,

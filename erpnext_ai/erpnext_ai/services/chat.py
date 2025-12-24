@@ -8,7 +8,7 @@ import frappe
 from erpnext_ai.erpnext_ai.doctype.ai_conversation.ai_conversation import AIConversation
 from erpnext_ai.erpnext_ai.doctype.ai_settings.ai_settings import AISettings, DEFAULT_TIMEOUT
 from .admin_summary import collect_admin_context
-from .openai_client import generate_completion
+from .llm_client import generate_completion
 
 
 CHAT_CONTEXT_PROMPT = (
@@ -414,7 +414,7 @@ def send_message(conversation_name: str, content: str, days: int = 30) -> Dict[s
     settings = AISettings.get_settings()
     api_key = getattr(settings, "_resolved_api_key", None)
     if not api_key:
-        frappe.throw("OpenAI API key is not configured.")  # noqa: TRY003
+        frappe.throw(f"{settings.api_provider} API key is not configured.")  # noqa: TRY003
 
     content = (content or "").strip()
     if not content:
@@ -472,6 +472,7 @@ def send_message(conversation_name: str, content: str, days: int = 30) -> Dict[s
         payload = build_payload(attempt["include_context"], attempt["limit_to_last_user"])
         try:
             reply = generate_completion(
+                provider=settings.api_provider,
                 api_key=api_key,
                 model=settings.openai_model,
                 messages=payload,
@@ -504,7 +505,7 @@ def send_message(conversation_name: str, content: str, days: int = 30) -> Dict[s
         if summary:
             reply_text = summary
         else:
-            frappe.log_error("OpenAI returned empty completion for AI chat.", "AI Chat Empty Response")
+            frappe.log_error("AI provider returned empty completion for AI chat.", "AI Chat Empty Response")
             reply_text = "I could not generate a response right now. Please try again in a moment."
 
     doc.append_message("assistant", reply_text, context_json=context_json if used_context else None)

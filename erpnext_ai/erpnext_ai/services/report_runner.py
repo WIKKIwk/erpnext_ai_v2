@@ -12,7 +12,7 @@ from erpnext_ai.erpnext_ai.doctype.ai_settings.ai_settings import (
     DEFAULT_TIMEOUT,
 )
 from .admin_summary import collect_admin_context
-from .openai_client import generate_completion
+from .llm_client import generate_completion
 
 
 SYSTEM_PROMPT = (
@@ -49,7 +49,7 @@ def generate_admin_report(
     settings = AISettings.get_settings()
     api_key = getattr(settings, "_resolved_api_key", None)
     if not api_key:
-        frappe.throw("OpenAI API key is not configured for AI reports.")  # noqa: TRY003
+        frappe.throw(f"{settings.api_provider} API key is not configured for AI reports.")  # noqa: TRY003
 
     days_int = _coerce_days(days)
     service_user = settings.resolve_service_user()
@@ -73,6 +73,7 @@ def generate_admin_report(
 
     try:
         output = generate_completion(
+            provider=settings.api_provider,
             api_key=api_key,
             model=settings.openai_model,
             system_prompt=SYSTEM_PROMPT,

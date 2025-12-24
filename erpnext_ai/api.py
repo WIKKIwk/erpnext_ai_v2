@@ -6,6 +6,7 @@ import frappe
 
 from erpnext_ai.erpnext_ai.services.admin_summary import collect_admin_context
 from erpnext_ai.erpnext_ai.services import chat
+from erpnext_ai.erpnext_ai.services.item_creator import create_items, preview_item_batch
 from erpnext_ai.erpnext_ai.services.report_runner import generate_admin_report
 
 
@@ -54,3 +55,28 @@ def append_ai_message(
 @frappe.whitelist()
 def send_ai_message(conversation_name: str, message: str, days: int = 30) -> Dict[str, Any]:
     return chat.send_message(conversation_name, message, days=days)
+
+
+@frappe.whitelist()
+def preview_item_creation(
+    raw_text: str,
+    item_group: str,
+    stock_uom: str,
+    use_ai: int = 0,
+    max_items: int = 200,
+) -> Dict[str, Any]:
+    return preview_item_batch(
+        raw_text=raw_text,
+        item_group=item_group,
+        stock_uom=stock_uom,
+        use_ai=bool(int(use_ai or 0)),
+        max_items=max_items,
+    )
+
+
+@frappe.whitelist()
+def create_items_from_preview(items: Any, create_disabled: int = 1) -> Dict[str, Any]:
+    payload = frappe.parse_json(items) if items is not None else []
+    if not isinstance(payload, list):
+        frappe.throw("Items payload must be a list.", frappe.ValidationError)  # noqa: TRY003
+    return create_items(items=payload, create_disabled=bool(int(create_disabled or 0)))

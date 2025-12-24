@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"header_ai\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Chatting with AI</b></span>\",\"col\":12}},{\"id\":\"shortcut_ai_chat\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"AI Chat\",\"col\":6}},{\"id\":\"shortcut_ai_settings\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"AI Settings\",\"col\":6}}]",
+ "content": "[{\"id\":\"header_ai\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Chatting with AI</b></span>\",\"col\":12}},{\"id\":\"shortcut_ai_chat\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"AI Chat\",\"col\":4}},{\"id\":\"shortcut_ai_item_creator\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"AI Item Creator\",\"col\":4}},{\"id\":\"shortcut_ai_settings\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"AI Settings\",\"col\":4}}]",
  "creation": "2024-10-13 00:00:00.000000",
  "custom_blocks": [],
  "docstatus": 0,
@@ -17,7 +17,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "AI Console",
-   "link_count": 2,
+   "link_count": 3,
    "type": "Card Break"
   },
   {
@@ -26,6 +26,16 @@
    "label": "AI Chat",
    "link_count": 0,
    "link_to": "ai-chat",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "AI Item Creator",
+   "link_count": 0,
+   "link_to": "ai-item-creator",
    "link_type": "Page",
    "onboard": 0,
    "type": "Link"
@@ -72,6 +82,13 @@
    "doc_view": "",
    "label": "AI Chat",
    "link_to": "ai-chat",
+   "type": "Page"
+  },
+  {
+   "color": "Green",
+   "doc_view": "",
+   "label": "AI Item Creator",
+   "link_to": "ai-item-creator",
    "type": "Page"
   },
   {

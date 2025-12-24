@@ -1,0 +1,23 @@
+{
+ "creation": "2025-12-24 00:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Page",
+ "icon": "octicon package",
+ "idx": 0,
+ "modified": "2025-12-24 00:00:00.000000",
+ "module": "ERPNext AI",
+ "name": "ai-item-creator",
+ "owner": "Administrator",
+ "page_name": "ai-item-creator",
+ "roles": [
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "AI Manager"
+  }
+ ],
+ "standard": "Yes",
+ "title": "AI Item Creator"
+}
+

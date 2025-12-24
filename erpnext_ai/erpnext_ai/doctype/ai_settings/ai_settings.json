@@ -15,7 +15,8 @@
   "openai_model",
   "service_user",
   "openai_api_key",
-  "gemini_api_key"
+  "gemini_api_key",
+  "allow_item_creation"
  ],
  "fields": [
   {
@@ -55,6 +56,13 @@
    "description": "Preferred: set GEMINI_API_KEY (or GOOGLE_API_KEY) in bench .env or site config. Use this field only if environment variables are unavailable.",
    "length": 256,
    "depends_on": "eval:doc.api_provider==\"Gemini\""
+  },
+  {
+   "default": 0,
+   "fieldname": "allow_item_creation",
+   "fieldtype": "Check",
+   "label": "Allow AI Item Creation",
+   "description": "Allows ERPNext AI to create new Item records via the AI Item Creator (still respects ERPNext permissions)."
   }
  ],
  "has_web_view": 0,

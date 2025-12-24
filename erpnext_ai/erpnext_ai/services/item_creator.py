@@ -276,6 +276,55 @@ def preview_item_batch(
     }
 
 
+def preview_item_series(
+    *,
+    item_group: str,
+    stock_uom: str,
+    name_prefix: str,
+    code_prefix: str,
+    count: int = 20,
+    start: int = 1,
+    pad: int = 0,
+    max_items: int = MAX_ITEM_BATCH_SIZE,
+) -> Dict[str, Any]:
+    count_int = _coerce_int(count, 20)
+    start_int = _coerce_int(start, 1)
+    pad_int = max(_coerce_int(pad, 0), 0)
+    max_items_int = min(max(_coerce_int(max_items, MAX_ITEM_BATCH_SIZE), 1), MAX_ITEM_BATCH_SIZE)
+
+    if count_int < 1:
+        frappe.throw("Count must be at least 1.", frappe.ValidationError)  # noqa: TRY003
+    if count_int > max_items_int:
+        frappe.throw(f"Count cannot exceed {max_items_int}.", frappe.ValidationError)  # noqa: TRY003
+
+    name_prefix_value = (name_prefix or "").strip()
+    code_prefix_value = (code_prefix or "").strip()
+    if not name_prefix_value:
+        frappe.throw("Name prefix is required.", frappe.ValidationError)  # noqa: TRY003
+    if not code_prefix_value:
+        frappe.throw("Code prefix is required.", frappe.ValidationError)  # noqa: TRY003
+
+    def _format_number(value: int) -> str:
+        if pad_int:
+            return f"{value:0{pad_int}d}"
+        return str(value)
+
+    lines: List[str] = []
+    for offset in range(count_int):
+        number = _format_number(start_int + offset)
+        item_name = f"{name_prefix_value}{number}"
+        item_code = f"{code_prefix_value}{number}"
+        lines.append(f"{item_code} - {item_name}")
+
+    return preview_item_batch(
+        raw_text="\n".join(lines),
+        item_group=item_group,
+        stock_uom=stock_uom,
+        use_ai=False,
+        max_items=max_items_int,
+    )
+
+
 def create_items(
     *,
     items: Sequence[Dict[str, Any]],

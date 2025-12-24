@@ -6,7 +6,7 @@ import frappe
 
 from erpnext_ai.erpnext_ai.services.admin_summary import collect_admin_context
 from erpnext_ai.erpnext_ai.services import chat
-from erpnext_ai.erpnext_ai.services.item_creator import create_items, preview_item_batch
+from erpnext_ai.erpnext_ai.services.item_creator import create_items, preview_item_batch, preview_item_series
 from erpnext_ai.erpnext_ai.services.report_runner import generate_admin_report
 
 
@@ -80,3 +80,24 @@ def create_items_from_preview(items: Any, create_disabled: int = 1) -> Dict[str,
     if not isinstance(payload, list):
         frappe.throw("Items payload must be a list.", frappe.ValidationError)  # noqa: TRY003
     return create_items(items=payload, create_disabled=bool(int(create_disabled or 0)))
+
+
+@frappe.whitelist()
+def preview_item_creation_series(
+    item_group: str,
+    stock_uom: str,
+    name_prefix: str,
+    code_prefix: str,
+    count: int = 20,
+    start: int = 1,
+    pad: int = 0,
+) -> Dict[str, Any]:
+    return preview_item_series(
+        item_group=item_group,
+        stock_uom=stock_uom,
+        name_prefix=name_prefix,
+        code_prefix=code_prefix,
+        count=count,
+        start=start,
+        pad=pad,
+    )

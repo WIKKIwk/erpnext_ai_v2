@@ -1404,6 +1404,7 @@ erpnext_ai.pages.AIChat = class AIChat {
 		const action = cache.action || {};
 		const $body = $card.find(".ai-chat-action-body");
 		const $footer = $card.find(".ai-chat-action-footer");
+		const actionType = action.action || "";
 
 		$body.empty();
 		$footer.empty();
@@ -1514,14 +1515,12 @@ erpnext_ai.pages.AIChat = class AIChat {
 
 		const itemGroup = (action.item_group || "").trim();
 		const stockUom = (action.stock_uom || "").trim();
-		const rawText = action.raw_text || "";
-		const useAi = action.use_ai ? 1 : 0;
 
-		if (!itemGroup || !stockUom || !rawText) {
+		if (!itemGroup || !stockUom) {
 			$body.append(
 				$(
 					`<div class="text-muted">${__(
-						"Missing item_group / stock_uom / raw_text in action block. Ask the assistant to include them.",
+						"Missing item_group / stock_uom in action block. Ask the assistant to include them.",
 					)}</div>`,
 				),
 			);
@@ -1530,6 +1529,60 @@ erpnext_ai.pages.AIChat = class AIChat {
 
 		cache.loading = true;
 		$body.append($(`<div class="text-muted">${__("Preparing preview...")}</div>`));
+
+		if (actionType === "preview_item_creation_series") {
+			const namePrefix = (action.name_prefix || "").toString();
+			const codePrefix = (action.code_prefix || "").toString();
+			const asInt = (value, fallback) => {
+				const parsed = parseInt(value, 10);
+				return Number.isFinite(parsed) ? parsed : fallback;
+			};
+			const count = asInt(action.count, 20);
+			const start = asInt(action.start, 1);
+			const pad = asInt(action.pad, 0);
+
+			if (!namePrefix || !codePrefix) {
+				cache.loading = false;
+				cache.error = __("Missing name_prefix / code_prefix in action block.");
+				this._updateActionCard(actionKey);
+				return;
+			}
+
+			frappe.call({
+				method: "erpnext_ai.api.preview_item_creation_series",
+				args: {
+					item_group: itemGroup,
+					stock_uom: stockUom,
+					name_prefix: namePrefix,
+					code_prefix: codePrefix,
+					count,
+					start,
+					pad,
+				},
+				callback: (r) => {
+					cache.preview = r.message || {};
+					cache.loading = false;
+					this._updateActionCard(actionKey);
+				},
+				error: (err) => {
+					cache.loading = false;
+					cache.error = this.extractErrorMessage(err);
+					this._updateActionCard(actionKey);
+				},
+			});
+
+			return;
+		}
+
+		const rawText = action.raw_text || "";
+		const useAi = action.use_ai ? 1 : 0;
+
+		if (!rawText) {
+			cache.loading = false;
+			cache.error = __("Missing raw_text in action block.");
+			this._updateActionCard(actionKey);
+			return;
+		}
 
 		frappe.call({
 			method: "erpnext_ai.api.preview_item_creation",
@@ -1560,7 +1613,8 @@ erpnext_ai.pages.AIChat = class AIChat {
 		if (!$bubble.length) return;
 
 		list.forEach((action, idx) => {
-			if (!action || action.action !== "preview_item_creation") return;
+			if (!action) return;
+			if (!["preview_item_creation", "preview_item_creation_series"].includes(action.action)) return;
 
 			const messageKeyRaw = (msg && (msg.name || msg.creation)) ? (msg.name || msg.creation) : "msg";
 			const messageKey = String(messageKeyRaw).replace(/[^A-Za-z0-9_-]/g, "_");

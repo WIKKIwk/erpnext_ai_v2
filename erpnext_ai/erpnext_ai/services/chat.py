@@ -20,17 +20,27 @@ ACTION_PROTOCOL_PROMPT = """You can help users perform safe ERPNext actions via 
 
 When the user asks to create Items, do NOT say you cannot. Instead, propose a preview using an *action block*.
 
-Return the action block exactly in this format (a fenced code block named `erpnext_ai_action`):
+Return ONLY the action block as a fenced code block named `erpnext_ai_action`. The UI will show a preview and a Create button.
+
+Use one of these actions:
+
+1) For a custom list (few items): `preview_item_creation`
 
 ```erpnext_ai_action
-{"action":"preview_item_creation","item_group":"Products","stock_uom":"Nos","raw_text":"BOLT M6x20\\nNUT M6\\nABC-123 - Washer","create_disabled":1}
+{"action":"preview_item_creation","item_group":"Products","stock_uom":"Nos","raw_text":"ABC-001 - Washer\\nABC-002 - Bolt","create_disabled":1}
+```
+
+2) For numbered items like name_1..name_20 and code_1..code_20: `preview_item_creation_series` (preferred for large batches)
+
+```erpnext_ai_action
+{"action":"preview_item_creation_series","item_group":"Raw Material","stock_uom":"Nos","name_prefix":"plyonka_","code_prefix":"pl_","start":1,"count":20,"pad":0,"create_disabled":1}
 ```
 
 Rules:
-- Only use this for user-requested bulk Item creation.
-- Always ask for confirmation before creation (the UI will show a button).
-- Do not invent Item Group / UOM values. If missing, ask the user.
-- Limit to max 200 items. No pricing, no stock, no extra fields.
+- Only use this for user-requested Item creation.
+- Always ask for confirmation before creation (the UI will confirm).
+- Do not invent Item Group / UOM values. If missing, ask the user to provide them.
+- Max 200 items. No pricing, no stock, no extra fields.
 """
 
 

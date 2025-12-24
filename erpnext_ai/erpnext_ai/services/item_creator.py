@@ -41,6 +41,24 @@ def _coerce_int(value: Any, default: int) -> int:
         return default
 
 
+def _resolve_link_value(doctype: str, value: str) -> str:
+    cleaned = (value or "").strip()
+    if not cleaned:
+        return ""
+    if frappe.db.exists(doctype, cleaned):
+        return cleaned
+
+    table = f"tab{doctype}"
+    rows = frappe.db.sql(
+        f"select name from `{table}` where lower(name)=lower(%s) limit 1",
+        (cleaned,),
+        as_list=True,
+    )
+    if rows and rows[0] and rows[0][0]:
+        return rows[0][0]
+    return cleaned
+
+
 def _clean_line(line: str) -> str:
     stripped = (line or "").strip()
     if not stripped:
@@ -209,7 +227,10 @@ def preview_item_batch(
         frappe.throw("You are not permitted to create Items.", frappe.PermissionError)  # noqa: TRY003
 
     max_items_int = min(max(_coerce_int(max_items, MAX_ITEM_BATCH_SIZE), 1), MAX_ITEM_BATCH_SIZE)
-    defaults = ItemDefaults(item_group=(item_group or "").strip(), stock_uom=(stock_uom or "").strip())
+    defaults = ItemDefaults(
+        item_group=_resolve_link_value("Item Group", (item_group or "").strip()),
+        stock_uom=_resolve_link_value("UOM", (stock_uom or "").strip()),
+    )
     default_issues = _validate_defaults(defaults)
     if default_issues:
         frappe.throw(" ".join(default_issues), frappe.ValidationError)  # noqa: TRY003
@@ -342,8 +363,8 @@ def create_items(
     for entry in items[:MAX_ITEM_BATCH_SIZE]:
         item_code = (entry.get("item_code") or "").strip()
         item_name = (entry.get("item_name") or "").strip()
-        item_group = (entry.get("item_group") or "").strip()
-        stock_uom = (entry.get("stock_uom") or "").strip()
+        item_group = _resolve_link_value("Item Group", (entry.get("item_group") or "").strip())
+        stock_uom = _resolve_link_value("UOM", (entry.get("stock_uom") or "").strip())
 
         if not item_code or not item_name:
             failed.append({"item_code": item_code, "item_name": item_name, "error": "Missing item_code or item_name"})

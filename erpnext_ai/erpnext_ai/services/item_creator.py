@@ -249,10 +249,13 @@ def preview_item_batch(
             if exists:
                 issues.append("Item already exists.")
         else:
-            base_code = _default_item_code(item_name)
-            candidate_code = _ensure_unique_item_code(base_code, used_codes)
-            if candidate_code != base_code:
-                issues.append("Item code adjusted to be unique.")
+            candidate_code = _default_item_code(item_name)
+            if candidate_code in used_codes:
+                issues.append("Duplicate item in input.")
+            used_codes.add(candidate_code)
+            exists = _item_code_exists(candidate_code)
+            if exists:
+                issues.append("Item already exists.")
 
         rows.append(
             {

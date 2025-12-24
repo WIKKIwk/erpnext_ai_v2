@@ -30,6 +30,7 @@ erpnext_ai.pages.AIChat = class AIChat {
 		this.$typingIndicator = null;
 		this.$pendingUserEcho = null;
 		this.$toolbar = null;
+		this.actionCache = {};
 
 		this._buildLayout();
 		this.startNewConversation();
@@ -947,6 +948,14 @@ erpnext_ai.pages.AIChat = class AIChat {
 					gap: 1rem;
 				}
 			}
+
+			.ai-chat-action-card {
+				margin-top: 0.75rem;
+			}
+
+			.ai-chat-action-card .table {
+				margin-bottom: 0;
+			}
 		`;
 
 		if (!document.getElementById("ai-chat-styles")) {
@@ -1311,6 +1320,270 @@ erpnext_ai.pages.AIChat = class AIChat {
 		}
 	}
 
+	extractActions(text) {
+		const raw = text || "";
+		const actions = [];
+		let cleaned = raw;
+
+		const fence = /```erpnext_ai_action\s*([\s\S]*?)```/gi;
+		cleaned = cleaned.replace(fence, (match, inner) => {
+			const payload = (inner || "").trim();
+			if (!payload) return match;
+			try {
+				const parsed = JSON.parse(payload);
+				if (parsed && typeof parsed === "object") {
+					actions.push(parsed);
+					return "";
+				}
+			} catch (e) {
+				console.warn("Failed to parse erpnext_ai_action block", e);
+			}
+			return match;
+		});
+
+		return { text: cleaned.trim(), actions };
+	}
+
+	_renderItemPreviewTable(items) {
+		const rows = items || [];
+		if (!rows.length) {
+			return `<p class="text-muted mb-0">${__("No items found in preview.")}</p>`;
+		}
+
+		const bodyRows = rows
+			.map((row) => {
+				const issues = (row.issues || []).map((x) => frappe.utils.escape_html(x)).join("<br>");
+				const status = row.exists ? __("Exists") : __("New");
+				const statusClass = row.exists ? "badge badge-warning" : "badge badge-success";
+				return `
+					<tr>
+						<td>${row.idx || ""}</td>
+						<td><code>${frappe.utils.escape_html(row.item_code || "")}</code></td>
+						<td>${frappe.utils.escape_html(row.item_name || "")}</td>
+						<td>${frappe.utils.escape_html(row.item_group || "")}</td>
+						<td>${frappe.utils.escape_html(row.stock_uom || "")}</td>
+						<td><span class="${statusClass}">${status}</span></td>
+						<td class="text-muted">${issues || ""}</td>
+					</tr>
+				`;
+			})
+			.join("");
+
+		return `
+			<div class="table-responsive">
+				<table class="table table-bordered table-sm">
+					<thead>
+						<tr>
+							<th style="width: 48px">#</th>
+							<th>${__("Item Code")}</th>
+							<th>${__("Item Name")}</th>
+							<th>${__("Item Group")}</th>
+							<th>${__("UOM")}</th>
+							<th style="width: 80px">${__("Status")}</th>
+							<th>${__("Issues")}</th>
+						</tr>
+					</thead>
+					<tbody>${bodyRows}</tbody>
+				</table>
+			</div>
+		`;
+	}
+
+	_updateActionCard(actionKey) {
+		const cache = this.actionCache[actionKey] || null;
+		if (!cache) return;
+		const selector = `[data-ai-action-key="${actionKey}"]`;
+		const $cards = (this.$feed && this.$feed.length) ? this.$feed.find(selector) : $(selector);
+		$cards.each((_, el) => {
+			this._renderActionCardContents($(el), actionKey);
+		});
+	}
+
+	_renderActionCardContents($card, actionKey) {
+		const cache = this.actionCache[actionKey] || {};
+		const action = cache.action || {};
+		const $body = $card.find(".ai-chat-action-body");
+		const $footer = $card.find(".ai-chat-action-footer");
+
+		$body.empty();
+		$footer.empty();
+
+		if (cache.error) {
+			$body.append(
+				$(`<div class="text-danger">${frappe.utils.escape_html(cache.error)}</div>`),
+			);
+			return;
+		}
+
+		if (cache.preview) {
+			const warnings = cache.preview.warnings || [];
+			if (warnings.length) {
+				const warningHtml = warnings.map((w) => frappe.utils.escape_html(w)).join("<br>");
+				$body.append($(`<div class="alert alert-warning">${warningHtml}</div>`));
+			}
+
+			$body.append($(this._renderItemPreviewTable(cache.preview.items || [])));
+
+			const createdResult = cache.createdResult || null;
+			if (createdResult) {
+				const created = createdResult.created || [];
+				const skipped = createdResult.skipped || [];
+				const failed = createdResult.failed || [];
+				const summary = `${__("Created")}: ${created.length} · ${__("Skipped")}: ${skipped.length} · ${__("Failed")}: ${failed.length}`;
+				$footer.append(
+					$(`<div class="text-muted mt-2">${frappe.utils.escape_html(summary)}</div>`),
+				);
+				return;
+			}
+
+			const items = cache.preview.items || [];
+			const newCount = items.filter((row) => !row.exists).length;
+			const createDisabled = action.create_disabled === 0 ? 0 : 1;
+			const $btn = $(
+				`<button type="button" class="btn btn-sm btn-primary mt-2">${__("Create Items")} (${newCount})</button>`,
+			);
+			if (cache.creating) {
+				$btn.prop("disabled", true).text(__("Creating..."));
+			}
+
+			$btn.on("click", () => {
+				if (cache.creating) return;
+				frappe.confirm(
+					__("Create {0} new Items? Existing Items will be skipped.", [newCount]),
+					() => {
+						cache.creating = true;
+						this._updateActionCard(actionKey);
+						frappe.call({
+							method: "erpnext_ai.api.create_items_from_preview",
+							args: {
+								items: items,
+								create_disabled: createDisabled,
+							},
+							freeze: true,
+							freeze_message: __("Creating Items..."),
+							callback: (r) => {
+								cache.createdResult = r.message || {};
+								cache.creating = false;
+								this._updateActionCard(actionKey);
+
+								if (this.conversation && this.conversation.name) {
+									const created = (cache.createdResult.created || []).length;
+									const skipped = (cache.createdResult.skipped || []).length;
+									const failed = (cache.createdResult.failed || []).length;
+									const msg = __(
+										"Item creation complete. Created {0}, skipped {1}, failed {2}.",
+										[created, skipped, failed],
+									);
+									frappe.call({
+										method: "erpnext_ai.api.append_ai_message",
+										args: {
+											conversation_name: this.conversation.name,
+											role: "assistant",
+											content: msg,
+										},
+									}).then(() => this.fetchConversation());
+								}
+							},
+							error: (err) => {
+								cache.creating = false;
+								cache.error = this.extractErrorMessage(err);
+								this._updateActionCard(actionKey);
+							},
+						});
+					},
+				);
+			});
+
+			$footer.append($btn);
+			if (createDisabled) {
+				$footer.append(
+					$(
+						`<div class="text-muted mt-2">${__(
+							"Note: Items will be created as <b>Disabled</b> by default.",
+						)}</div>`,
+					),
+				);
+			}
+			return;
+		}
+
+		if (cache.loading) {
+			$body.append($(`<div class="text-muted">${__("Preparing preview...")}</div>`));
+			return;
+		}
+
+		const itemGroup = (action.item_group || "").trim();
+		const stockUom = (action.stock_uom || "").trim();
+		const rawText = action.raw_text || "";
+		const useAi = action.use_ai ? 1 : 0;
+
+		if (!itemGroup || !stockUom || !rawText) {
+			$body.append(
+				$(
+					`<div class="text-muted">${__(
+						"Missing item_group / stock_uom / raw_text in action block. Ask the assistant to include them.",
+					)}</div>`,
+				),
+			);
+			return;
+		}
+
+		cache.loading = true;
+		$body.append($(`<div class="text-muted">${__("Preparing preview...")}</div>`));
+
+		frappe.call({
+			method: "erpnext_ai.api.preview_item_creation",
+			args: {
+				raw_text: rawText,
+				item_group: itemGroup,
+				stock_uom: stockUom,
+				use_ai: useAi,
+			},
+			callback: (r) => {
+				cache.preview = r.message || {};
+				cache.loading = false;
+				this._updateActionCard(actionKey);
+			},
+			error: (err) => {
+				cache.loading = false;
+				cache.error = this.extractErrorMessage(err);
+				this._updateActionCard(actionKey);
+			},
+		});
+	}
+
+	attachActions($message, msg, actions) {
+		const list = actions || [];
+		if (!list.length) return;
+
+		const $bubble = $message.find(".ai-chat-bubble").first();
+		if (!$bubble.length) return;
+
+		list.forEach((action, idx) => {
+			if (!action || action.action !== "preview_item_creation") return;
+
+			const messageKeyRaw = (msg && (msg.name || msg.creation)) ? (msg.name || msg.creation) : "msg";
+			const messageKey = String(messageKeyRaw).replace(/[^A-Za-z0-9_-]/g, "_");
+			const actionKey = `${messageKey}_${idx}`;
+
+			if (!this.actionCache[actionKey]) {
+				this.actionCache[actionKey] = { action };
+			}
+
+			const $card = $(`
+				<div class="ai-chat-action-card card" data-ai-action-key="${actionKey}">
+					<div class="card-body">
+						<div class="text-muted mb-2">${__("Item creation proposal")}</div>
+						<div class="ai-chat-action-body"></div>
+						<div class="ai-chat-action-footer"></div>
+					</div>
+				</div>
+			`);
+			$bubble.append($card);
+			this._renderActionCardContents($card, actionKey);
+		});
+	}
+
 	createMessageElement(msg, options = {}) {
 		const role = msg.role || "assistant";
 		const roleLabel =
@@ -1332,6 +1605,7 @@ erpnext_ai.pages.AIChat = class AIChat {
 		].filter(Boolean).join(" ");
 
 		let body;
+		let extractedActions = [];
 		if (options.pending) {
 			body = `
 				<span class="typing-dots">
@@ -1339,7 +1613,13 @@ erpnext_ai.pages.AIChat = class AIChat {
 				</span>
 			`;
 		} else {
-			body = this.renderMarkdown(msg.content);
+			if (role === "assistant") {
+				const parsed = this.extractActions(msg.content);
+				extractedActions = parsed.actions || [];
+				body = this.renderMarkdown(parsed.text || msg.content);
+			} else {
+				body = this.renderMarkdown(msg.content);
+			}
 		}
 
 		const timestamp = options.timestampOverride || msg.creation;
@@ -1394,6 +1674,10 @@ erpnext_ai.pages.AIChat = class AIChat {
 			} else {
 				applyAnimation();
 			}
+		}
+
+		if (!options.pending && role === "assistant" && extractedActions.length) {
+			this.attachActions($message, msg, extractedActions);
 		}
 
 		return $message;

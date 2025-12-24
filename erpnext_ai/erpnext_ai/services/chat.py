@@ -16,6 +16,23 @@ CHAT_CONTEXT_PROMPT = (
     "financial totals, and active staff. If a value is missing, explain what additional data is required."
 )
 
+ACTION_PROTOCOL_PROMPT = """You can help users perform safe ERPNext actions via the AI Chat UI.
+
+When the user asks to create Items, do NOT say you cannot. Instead, propose a preview using an *action block*.
+
+Return the action block exactly in this format (a fenced code block named `erpnext_ai_action`):
+
+```erpnext_ai_action
+{"action":"preview_item_creation","item_group":"Products","stock_uom":"Nos","raw_text":"BOLT M6x20\\nNUT M6\\nABC-123 - Washer","create_disabled":1}
+```
+
+Rules:
+- Only use this for user-requested bulk Item creation.
+- Always ask for confirmation before creation (the UI will show a button).
+- Do not invent Item Group / UOM values. If missing, ask the user.
+- Limit to max 200 items. No pricing, no stock, no extra fields.
+"""
+
 
 def _coerce_days(days: Any) -> int:
     try:
@@ -441,12 +458,19 @@ def send_message(conversation_name: str, content: str, days: int = 30) -> Dict[s
             context_content = f"{context_content}\n\nNote: {context_hint}"
         context_message = {"role": "system", "content": context_content}
 
+    action_message = {"role": "system", "content": ACTION_PROTOCOL_PROMPT}
+
     def build_payload(include_context: bool, limit_to_last_user: bool) -> list[dict]:
         messages = [dict(msg) for msg in base_payload]
+        if messages:
+            messages.insert(1, dict(action_message))
+        else:
+            messages = [dict(action_message)]
         if limit_to_last_user:
             system_msg = messages[0] if messages else {"role": "system", "content": "You are an ERPNext copilot."}
             last_user = next((dict(msg) for msg in reversed(messages) if msg.get("role") == "user"), None)
             payload = [dict(system_msg)]
+            payload.append(dict(action_message))
             if include_context and context_message:
                 payload.append(dict(context_message))
             if last_user:
@@ -454,7 +478,8 @@ def send_message(conversation_name: str, content: str, days: int = 30) -> Dict[s
             return payload
 
         if include_context and context_message:
-            messages.insert(1, dict(context_message))
+            insert_idx = 2 if len(messages) > 1 else 1
+            messages.insert(insert_idx, dict(context_message))
         return messages
 
     attempts = [

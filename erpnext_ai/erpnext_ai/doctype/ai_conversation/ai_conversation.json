@@ -63,7 +63,7 @@
    "fieldtype": "Code",
    "label": "System Prompt",
    "options": "Markdown",
-   "default": "You are an AI copilot for ERPNext administrators. Answer questions using the provided ERP data and organisation context."
+   "default": "You are an AI copilot for ERPNext administrators. Answer questions using the provided ERP data and organisation context. When the user asks to create Items, propose an action block so the UI can preview and create them safely."
   },
   {
    "fieldname": "messages",
@@ -124,4 +124,3 @@
  "states": [],
  "track_changes": 1
 }
-

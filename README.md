@@ -1,316 +1,435 @@
-# ERPNext AI
+```
+███████╗██████╗ ██████╗ ███╗   ██╗███████╗██╗  ██╗████████╗     █████╗ ██╗
+██╔════╝██╔══██╗██╔══██╗████╗  ██║██╔════╝╚██╗██╔╝╚══██╔══╝    ██╔══██╗██║
+█████╗  ██████╔╝██████╔╝██╔██╗ ██║█████╗   ╚███╔╝    ██║       ███████║██║
+██╔══╝  ██╔══██╗██╔═══╝ ██║╚██╗██║██╔══╝   ██╔██╗    ██║       ██╔══██║██║
+███████╗██║  ██║██║     ██║ ╚████║███████╗██╔╝ ██╗   ██║       ██║  ██║██║
+╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝  ╚═══╝╚══════╝╚═╝  ╚═╝   ╚═╝       ╚═╝  ╚═╝╚═╝
+```
 
-Author: Abdulfttox Qurbonov
+# ERPNEXT AI :: ADMIN COPILOT + ITEM OPS
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Frappe](https://img.shields.io/badge/frappe-v15-orange.svg)](https://github.com/frappe/frappe)
-[![ERPNext](https://img.shields.io/badge/erpnext-v15-green.svg)](https://github.com/frappe/erpnext)
+```
+PROJECT: ERPNext AI
+AUTHOR: Abdulfattox Qurbonov
+LICENSE: MIT
+VERSION: 1.0.0
+PLATFORM: Frappe Framework + ERPNext (bench)
+RUNTIME: Python 3.10+ | Node.js 18+ (per ERPNext)
+```
 
-ERPNext AI provides AI-assisted reporting and chat tools for ERPNext administrators. It includes a role-aware command center, scheduled summaries, and optional Telegram bot integration.
+---
 
-## Features
+## SYSTEM OVERVIEW
 
-- AI assistant for ERPNext administrators
-- Daily admin summaries via scheduler
-- AI chat grounded in ERPNext context
-- Telegram bot integration for sales workflows
-- Encrypted credential storage
-- Role-based access (AI Manager)
-- Audit trail for conversations and reports
+```
+ERPNext AI is a desk-native assistant for ERPNext administrators.
+It combines an AI chat interface, a command center dashboard, and
+bulk item tooling to speed up routine operations.
 
-## Requirements
+CRITICAL: ERPNext is required. Frappe-only installs are not supported.
+```
 
-- Frappe: v15.x
-- ERPNext: v15.x (required)
-- Python: 3.10 or higher
-- Node.js: 18.x or higher
-- API key for the selected provider (OpenAI or Gemini)
+---
 
-Note: This app requires ERPNext to be installed. It will not work with Frappe-only installations.
+## CAPABILITY MATRIX
 
-## Installation
+```
+CORE CONSOLE
+├── AI Chat workspace with ERP context injection
+├── AI Command Center metrics dashboard
+├── AI Report generation (AI Report DocType)
+├── AI Item Creator (preview + bulk create)
+└── Conversation history stored in ERPNext
 
-### Method 1: Using bench
+CONTEXT & REPORTING
+├── Sales/Purchase totals and volumes
+├── Delivery notes + open support tickets
+├── Cash/bank + receivables/payables snapshot
+├── Inventory snapshot + top stock items
+├── Task + HR overview
+└── Recent records (users, customers, items, invoices)
+
+ITEM OPERATIONS
+├── Preview-first item creation (max 200 items)
+├── Optional AI parsing for messy lists
+├── Series generator (prefix + numbering)
+├── Create as Disabled option
+├── Update limited to safe fields
+└── Delete/update only for AI-created items
+
+TELEGRAM SALES BOT (OPTIONAL)
+├── Group-based /report and /order workflows
+├── Sales manager assignment flow
+├── Encrypted API credentials storage
+└── SQLite-backed bot state
+
+SECURITY & ACCESS
+├── Role-based access (System Manager / AI Manager)
+├── API keys stored in Password fields or env vars
+├── Item operations respect ERPNext permissions
+└── AI-created items flagged via erpnext_ai_created
+```
+
+---
+
+## TECHNICAL REQUIREMENTS
+
+```
+MANDATORY
+├── ERPNext bench (Frappe + ERPNext)
+└── Python deps: openai, requests, python-telegram-bot, cryptography
+
+OPTIONAL
+└── Telegram bot env vars (if enabled)
+```
+
+---
+
+## DEPLOYMENT PROTOCOLS
+
+### [PROTOCOL 1] BENCH INSTALLATION
 
 ```bash
-# Navigate to your bench directory
 cd /path/to/your/bench
-
-# Get the app from GitHub (run after installing frappe/erpnext core apps)
 bench get-app https://github.com/WIKKIwk/erpnext_ai.git
-
-# Install the app on your site
 bench --site your-site-name install-app erpnext_ai
-
-# Migrate and build
 bench --site your-site-name migrate
 bench build
 ```
 
-### Method 2: Manual installation
+### [PROTOCOL 2] MANUAL INSTALLATION
 
 ```bash
-# Clone the repository
-cd apps
+cd /path/to/your/bench/apps
 git clone https://github.com/WIKKIwk/erpnext_ai.git
-
-# Install dependencies
 cd erpnext_ai
 pip install -e .
 
-# Install the app on your site
 cd ../..
 bench --site your-site-name install-app erpnext_ai
+bench --site your-site-name migrate
 ```
 
-### Method 3: Provision a fresh bench on Ubuntu
-
-If you need a brand-new ERPNext environment, this repository ships with `install_erpnext.sh`. It installs dependencies on Ubuntu 22.04/24.04, sets up Bench, creates a site, and installs ERPNext.
+### [PROTOCOL 3] OPTIONAL FULL BENCH PROVISIONING (UBUNTU 22.04/24.04)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/WIKKIwk/erpnext_ai/master/install_erpnext.sh | sudo bash
+# From repository root (or use the raw URL)
+./install_erpnext.sh
 ```
 
-Environment variables such as `TARGET_USER`, `BENCH_NAME`, `SITE_NAME`, `FRAPPE_BRANCH`, `ERPNEXT_BRANCH`, and `SITE_ADMIN_PASSWORD` can be exported before running the script to customize the installation.
-
-## Configuration
-
-### 1. Assign roles
-
-Assign the AI Manager role to users who should access AI reports. System Managers retain full access automatically.
-
-### 2. Configure API key
-
-Recommended: add to bench-level `.env` file:
-
-```bash
-OPENAI_API_KEY=sk-your-api-key-here
-# or
-GEMINI_API_KEY=your-gemini-api-key-here
-# or
-GOOGLE_API_KEY=your-gemini-api-key-here
+**ENVIRONMENT OVERRIDES (SCRIPT):**
+```
+TARGET_USER=frappe
+BENCH_NAME=frappe-bench
+SITE_NAME=erp.localhost
+FRAPPE_BRANCH=version-15
+ERPNEXT_BRANCH=version-15
+SITE_ADMIN_PASSWORD=Admin@123
 ```
 
-Alternative: configure via UI in AI Settings (Desk -> Build -> Chatting with AI -> AI Settings).
+---
 
-### 3. Configure AI settings
+## CONFIGURATION MATRIX
 
-Navigate to AI Settings and configure:
+### [CONFIG 1] ROLE ASSIGNMENT
 
-- Provider: OpenAI or Gemini
-- Model: gpt-4o, gpt-4o-mini, gpt-5, gpt-5-mini, gemini-2.5-flash
-- Timeout: request timeout in seconds (default: 30)
-- Prompt Template: customize the summary style
-- Allow AI Item Creation: enable if AI should create items
+```
+Roles:
+├── System Manager ............. Full access
+└── AI Manager ................. Read access to AI features
 
-### 4. Start scheduler
-
-The app includes a daily scheduler task for automatic admin summaries:
-
-```bash
-# Development
-bench start
-
-# Production (supervisor will handle this automatically)
-sudo systemctl restart supervisor
+Procedure:
+1) Desk → Users and Permissions → Role Permissions Manager
+2) Assign "AI Manager" to designated users
 ```
 
-## Usage
+### [CONFIG 2] AI SETTINGS
 
-### Admin summary
+```
+Path: Desk → Chatting with AI → AI Settings
 
-1. Navigate to Desk -> Build -> Chatting with AI
-2. Click "Generate Summary" to create an instant report
-3. Daily summaries are generated via scheduler
+Fields:
+├── Provider ............... OpenAI | Gemini
+├── Model .................. OpenAI: gpt-4o, gpt-4o-mini, gpt-5, gpt-5-mini
+│                            Gemini: gemini-2.5-flash
+├── Run As User ............ Context collection user (default: Administrator)
+├── OpenAI API Key ......... Optional (Password field)
+├── Gemini API Key .......... Optional (Password field)
+└── Allow AI Item Creation . Enables AI item operations
+```
 
-### AI chat
+**API KEY RESOLUTION ORDER**
+```
+OpenAI:  OPENAI_API_KEY env -> frappe.conf.openai_api_key -> AI Settings field
+Gemini:  GEMINI_API_KEY / GOOGLE_API_KEY env -> frappe.conf.gemini_api_key
+         / frappe.conf.google_api_key -> AI Settings field
+```
 
-1. Open AI Chat workspace
-2. Start a conversation with the AI assistant
-3. All messages are stored in AI Conversation records
-4. Context from ERPNext is included automatically
+### [CONFIG 3] ITEM OPS SAFEGUARD
 
-### Access reports
+```
+Custom Field:
+Item.erpnext_ai_created (Check)
 
-- Navigate to AI Report DocType to view all generated reports
-- Filter by date, user, or report type
-- Export reports as needed
+Notes:
+- Added via migrate/patch.
+- Update/delete operations are limited to AI-created items.
+- Item permissions still apply.
+```
 
-## Telegram bot integration
+### [CONFIG 4] SCHEDULER
 
-The app includes an optional Telegram bot for sales team integration.
+```
+Task: erpnext_ai.tasks.generate_daily_admin_summary
+Frequency: daily (hooks.py)
+Output: Comment on AI Settings + realtime event (erpnext_ai_daily_summary)
 
-### Setup
+Manual trigger:
+bench --site your-site-name execute erpnext_ai.tasks.generate_daily_admin_summary
+```
 
-1. Create a Telegram bot:
-   - Message @BotFather on Telegram
-   - Use /newbot and follow instructions
-   - Copy the bot token
+---
 
-2. Configure environment variables:
+## OPERATIONAL PROCEDURES
 
-```bash
-# Add to bench .env file
-TELEGRAM_BOT_TOKEN=your-bot-token-here
+### AI COMMAND CENTER
+
+```
+Access:
+- Page route: /app/ai-command-center
+
+Actions:
+- Refresh Metrics -> pulls ERPNext context
+- Generate Summary -> creates an AI Report record
+
+Output:
+- AI Report DocType with prompt, context JSON, and AI output
+```
+
+### AI CHAT
+
+```
+Access:
+Desk → Chatting with AI → AI Chat
+
+Core Behavior:
+- Stores conversations in AI Conversation / AI Message.
+- Injects ERP context when enabled.
+- Supports item create/update/delete via action blocks.
+
+Action Blocks:
+- Use fenced code block: ```erpnext_ai_action
+- Set "auto_apply": 1 for immediate execution (UI default).
+```
+
+### AI ITEM CREATOR
+
+```
+Access:
+Desk → Chatting with AI → AI Item Creator
+
+Workflow:
+- Preview items first
+- Optional AI parsing of messy lists
+- Create as Disabled option (default on the page)
+```
+
+---
+
+## ACTION BLOCK PROTOCOL (AI CHAT)
+
+```erpnext_ai_action
+{"action":"preview_item_creation","item_group":"Raw Material","stock_uom":"Nos","raw_text":"PL_1 - PLYONKA_1\nPL_2 - PLYONKA_2","create_disabled":1,"auto_apply":1}
+```
+
+```erpnext_ai_action
+{"action":"preview_item_creation_series","item_group":"Raw Material","stock_uom":"Nos","name_prefix":"plyonka_","code_prefix":"pl_","start":1,"count":20,"pad":0,"create_disabled":1,"auto_apply":1}
+```
+
+```erpnext_ai_action
+{"action":"preview_item_deletion_series","code_prefix":"pl_","start":1,"count":20,"pad":0,"auto_apply":1}
+```
+
+```erpnext_ai_action
+{"action":"preview_item_update_series","code_prefix":"pl_","start":1,"count":20,"pad":0,"updates":{"item_group":"Raw Material","stock_uom":"Nos","disabled":0},"auto_apply":1}
+```
+
+**Allowed update fields:** `item_name`, `item_group`, `stock_uom`, `disabled`, `description`
+
+---
+
+## TELEGRAM BOT DEPLOYMENT (OPTIONAL)
+
+### REQUIRED ENVIRONMENT VARIABLES
+
+```
+TELEGRAM_BOT_TOKEN=...
 TELEGRAM_ADMIN_IDS=123456789,987654321
 FRAPPE_BASE_URL=https://your-erp-domain.com
-
-# Optional security hardening
-BOT_ENCRYPTION_KEY=your-32-byte-base64-key
-TELEGRAM_BOT_DB_PATH=/path/to/telegram_bot.db
 ```
 
-3. Install dependencies:
+### OPTIONAL OVERRIDES
 
-```bash
-pip install -e apps/erpnext_ai
+```
+BOT_ENCRYPTION_KEY=base64-32-byte-key
+TELEGRAM_BOT_DB_PATH=/var/lib/erpnext_ai/telegram_bot.sqlite3
+ERP_REQUEST_TIMEOUT=10
+
+TELEGRAM_REPORT_RESOURCE=Sales Order
+TELEGRAM_REPORT_FIELDS=["name","customer_name","transaction_date","grand_total","per_delivered"]
+TELEGRAM_REPORT_LIMIT=5
+TELEGRAM_REPORT_ORDER_BY=transaction_date desc
+
+TELEGRAM_ORDER_TARGET_DOCTYPE=Lead
+TELEGRAM_ORDER_SOURCE=Telegram Bot
+TELEGRAM_ORDER_TERRITORY=
+TELEGRAM_ORDER_STATUS=Lead
+TELEGRAM_ORDER_ATTACH_PHOTO=true
+TELEGRAM_BOT_NAME=sales_bot
+FRAPPE_VERIFICATION_ENDPOINT=/api/method/frappe.auth.get_logged_user
 ```
 
-4. Run the bot:
+### BOT STARTUP
 
 ```bash
-# From bench directory
+# Inside bench venv
+python -m erpnext_ai.erpnext_ai.telegram.bot
+
+# Or via bench
 bench --site your-site-name execute erpnext_ai.erpnext_ai.telegram.bot.main
-
-# Or using systemd/supervisor (recommended for production)
-# Create a service file that runs the above command
 ```
 
-### Bot workflow
+### COMMANDS
 
-1. Admin setup:
-   - Admin sends /add_master_manager <telegram_id> to bot in private chat
-   - This registers a sales master manager
-
-2. Master manager setup:
-   - Sales master manager joins target groups
-   - Runs /users command in group
-   - Selects future sales manager from inline list
-
-3. Sales manager setup:
-   - Sales manager receives DM from bot
-   - Runs /set_api <api_key> <api_secret> to connect ERPNext account
-   - Credentials are verified and stored encrypted
-
-4. Team usage:
-   - /report - view recent ERPNext sales data
-   - /order - submit structured order request
-   - Orders are saved as ERPNext Leads and logged locally
-
-### Bot commands
-
-- /start - initialize bot
-- /help - show help message
-- /users - select sales manager (master managers only)
-- /set_api - configure ERPNext credentials
-- /report - generate sales report
-- /order - submit new order
-- /add_master_manager - add master manager (admins only)
-
-## DocTypes
-
-The app creates the following DocTypes:
-
-| DocType | Description |
-|---------|-------------|
-| AI Settings | Global configuration for AI features |
-| AI Report | Stores generated admin summaries |
-| AI Conversation | Chat history and context |
-| AI Message | Individual messages in conversations |
-
-## Scheduled tasks
-
-The app includes scheduled tasks that run automatically:
-
-- Daily: generate_daily_admin_summary - creates automated admin summary
-
-## Development
-
-### Setup development environment
-
-```bash
-cd apps/erpnext_ai
-pre-commit install
+```
+/start
+/help
+/add_master_manager <telegram_id>
+/remove_master_manager <telegram_id>
+/list_master_managers
+/users
+/set_api <api_key> <api_secret>
+/report
+/order
+/whoami
+/cancel
+/skip
 ```
 
-### Code quality tools
+---
 
-The app uses pre-commit hooks for code quality:
+## DATA MODEL
 
-- ruff - Python linting and formatting
-- eslint - JavaScript linting
-- prettier - Code formatting
-- pyupgrade - Python syntax modernization
+```
+AI Settings (Single)
+├── api_provider (Select) ....... OpenAI | Gemini
+├── openai_model (Select) ....... Provider-specific model list
+├── service_user (Link) ......... Run-as User
+├── openai_api_key (Password) ... Optional override
+├── gemini_api_key (Password) ... Optional override
+└── allow_item_creation (Check) . Feature flag
 
-### Running tests
+AI Report
+├── title (Data)
+├── report_type (Select) ........ Summary | Custom Prompt | Trend
+├── generated_on (Datetime)
+├── status (Select) ............. Draft | Running | Success | Failed
+├── model_used (Data)
+├── error_message (Small Text)
+├── prompt (Code)
+├── context_json (Code)
+└── ai_output (Text Editor)
 
-```bash
-# Run all tests
-bench --site your-site-name run-tests --app erpnext_ai
+AI Conversation
+├── title (Data)
+├── user (Link)
+├── status (Select) ............. Open | Closed
+├── include_context (Check)
+├── last_interaction (Datetime)
+├── system_prompt (Code)
+└── messages (Table → AI Message)
 
-# Run specific test
-bench --site your-site-name run-tests --app erpnext_ai --module path.to.test
+AI Message (Child)
+├── role (Select) ............... system | user | assistant
+├── content (Text Editor)
+├── context_json (Code)
+└── token_usage (Int)
+
+Item (Custom Field)
+└── erpnext_ai_created (Check) .. AI created flag
 ```
 
-## Troubleshooting
+---
 
-### AI features not working
+## DIAGNOSTIC PROCEDURES
 
-1. Verify the API key is set correctly
-2. Check AI Settings configuration
-3. Review logs: bench --site your-site-name console
+### ISSUE: AI FEATURES UNRESPONSIVE
 
-### Telegram bot not responding
+```
+[1] Verify AI Settings API key
+    Desk → Chatting with AI → AI Settings
 
-1. Verify TELEGRAM_BOT_TOKEN is set
-2. Check bot is running: ps aux | grep telegram
-3. Review bot logs
-4. Ensure bot is added to the group as administrator
+[2] Verify model/provider selection
+    OpenAI: gpt-4o, gpt-4o-mini, gpt-5, gpt-5-mini
+    Gemini: gemini-2.5-flash
 
-### Scheduler not running
-
-1. Check scheduler is enabled: bench --site your-site-name doctor
-2. Verify services are running: sudo supervisorctl status
-3. Check scheduler logs: tail -f sites/your-site-name/logs/scheduler.log
-
-### Dependency issues
-
-```bash
-# Reinstall dependencies
-pip install -e apps/erpnext_ai --force-reinstall
-
-# Clear cache
-bench --site your-site-name clear-cache
+[3] Test report generation
+    bench --site your-site-name execute erpnext_ai.api.generate_admin_summary
 ```
 
-## License
+### ISSUE: ITEM OPS BLOCKED
 
+```
+[1] Enable "Allow AI Item Creation" in AI Settings
+[2] Ensure user has Item create/write/delete permissions
+[3] Run migrate to add Item.erpnext_ai_created
+```
+
+### ISSUE: TELEGRAM BOT NON-RESPONSIVE
+
+```
+[1] Verify TELEGRAM_BOT_TOKEN and FRAPPE_BASE_URL
+[2] Check bot process logs
+[3] Ensure TELEGRAM_ADMIN_IDS contains your Telegram ID
+```
+
+---
+
+## LICENSE TERMS
+
+```
 MIT License
 
-Copyright (c) 2024 Abdulfttox Qurbonov
+Copyright (c) 2024 Abdulfattox Qurbonov
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
 
-## Contributing
+---
 
-Contributions are accepted via pull request.
+```
+PROJECT: ERPNext AI
+VERSION: 1.0.0
+LAST_UPDATED: 2025-12-25
+MAINTAINER: Abdulfattox Qurbonov
+STATUS: PRODUCTION_READY
+```
 
-1. Fork the repository
-2. Create your feature branch (git checkout -b feature/your-feature)
-3. Commit your changes (git commit -m "Add your feature")
-4. Push to the branch (git push origin feature/your-feature)
-5. Open a pull request
-
-## Support
-
-For issues or questions, open an issue on GitHub.
-
-## Acknowledgments
-
-- Built with Frappe Framework
-- Telegram integration using python-telegram-bot
+**END DOCUMENTATION**

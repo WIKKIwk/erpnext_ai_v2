@@ -8,7 +8,7 @@ def get_data():
 			"category": "Modules",
 			"label": "Chatting with AI",
 			"color": "#7c3aed",
-			"icon": "octicon octoface",
+			"icon": "es-line-sparkle",
 			"type": "module",
 			"description": "Chat with GPT-5 Mini, request ERPNext summaries, and manage AI settings.",
 		},

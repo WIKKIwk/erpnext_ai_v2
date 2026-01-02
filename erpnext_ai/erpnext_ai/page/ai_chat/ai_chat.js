@@ -38,41 +38,57 @@ erpnext_ai.pages.AIChat = class AIChat {
 
 	_buildLayout() {
 		const styles = `
-			:root {
-				--ai-chat-app-bg: #ececf1;
-				--ai-chat-feed-bg: #f7f7f8;
-				--ai-chat-panel: rgba(255, 255, 255, 0.75);
-				--ai-chat-border: #d0d7de;
-				--ai-chat-text: #1f2937;
-				--ai-chat-muted: #6b7280;
-				--ai-chat-assistant-bg: #f7f7f8;
-				--ai-chat-user-bg: #e5e7eb;
-				--ai-chat-user-text: #111827;
-				--ai-chat-shadow: 0 18px 40px -24px rgba(15, 23, 42, 0.35);
-				--ai-chat-input-bg: #ffffff;
-				--ai-chat-input-border: #d0d7de;
-				--ai-chat-accent: #1f272f;
-				--ai-chat-accent-hover: #13171d;
-				--ai-chat-button-text: #f8fafc;
-			}
+				:root {
+					--ai-chat-app-bg: #ececf1;
+					--ai-chat-feed-bg: #f7f7f8;
+					--ai-chat-panel: rgba(255, 255, 255, 0.92);
+					--ai-chat-border: #d0d7de;
+					--ai-chat-text: #1f2937;
+					--ai-chat-muted: #6b7280;
+					--ai-chat-assistant-bg: #f7f7f8;
+					--ai-chat-user-bg: #e5e7eb;
+					--ai-chat-user-text: #111827;
+					--ai-chat-shadow: 0 18px 40px -24px rgba(15, 23, 42, 0.35);
+					--ai-chat-input-bg: #ffffff;
+					--ai-chat-input-border: #d0d7de;
+					--ai-chat-accent: #1f272f;
+					--ai-chat-accent-hover: #13171d;
+					--ai-chat-button-text: #f8fafc;
+					--ai-chat-wrapper-shadow: 0 26px 70px rgba(15, 23, 42, 0.14);
+					--ai-chat-divider: rgba(148, 163, 184, 0.22);
+					--ai-chat-bubble-border: rgba(15, 23, 42, 0.06);
+					--ai-chat-bubble-hover-shadow: 0 18px 46px rgba(15, 23, 42, 0.14);
+					--ai-chat-input-shell-bg: rgba(255, 255, 255, 0.88);
+					--ai-chat-input-shell-shadow: 0 18px 44px -28px rgba(15, 23, 42, 0.22);
+					--ai-chat-code-bg: rgba(15, 23, 42, 0.04);
+					--ai-chat-idle-opacity: 0.22;
+				}
 
-			html:is([data-theme="dark"], [data-theme-mode="dark"]) {
-				--ai-chat-app-bg: #161616;
-				--ai-chat-feed-bg: #161616;
-				--ai-chat-panel: rgba(54, 54, 54, 0.85);
-				--ai-chat-border: #363636;
-				--ai-chat-text: #ffffff;
-				--ai-chat-muted: rgba(255, 255, 255, 0.7);
-				--ai-chat-assistant-bg: #363636;
-				--ai-chat-user-bg: #161616;
-				--ai-chat-user-text: #ffffff;
-				--ai-chat-shadow: 0 -12px 32px rgba(22, 22, 22, 0.6);
-				--ai-chat-input-bg: #161616;
-				--ai-chat-input-border: #363636;
-				--ai-chat-accent: #363636;
-				--ai-chat-accent-hover: #161616;
-				--ai-chat-button-text: #ffffff;
-			}
+				html:is([data-theme="dark"], [data-theme-mode="dark"]) {
+					--ai-chat-app-bg: #161616;
+					--ai-chat-feed-bg: #161616;
+					--ai-chat-panel: rgba(54, 54, 54, 0.92);
+					--ai-chat-border: #363636;
+					--ai-chat-text: #ffffff;
+					--ai-chat-muted: rgba(255, 255, 255, 0.7);
+					--ai-chat-assistant-bg: #363636;
+					--ai-chat-user-bg: #161616;
+					--ai-chat-user-text: #ffffff;
+					--ai-chat-shadow: 0 -12px 32px rgba(22, 22, 22, 0.6);
+					--ai-chat-input-bg: #161616;
+					--ai-chat-input-border: #363636;
+					--ai-chat-accent: #363636;
+					--ai-chat-accent-hover: #161616;
+					--ai-chat-button-text: #ffffff;
+					--ai-chat-wrapper-shadow: 0 26px 70px rgba(0, 0, 0, 0.55);
+					--ai-chat-divider: rgba(54, 54, 54, 0.6);
+					--ai-chat-bubble-border: rgba(255, 255, 255, 0.06);
+					--ai-chat-bubble-hover-shadow: 0 18px 46px rgba(0, 0, 0, 0.5);
+					--ai-chat-input-shell-bg: rgba(20, 22, 26, 0.35);
+					--ai-chat-input-shell-shadow: 0 18px 44px rgba(0, 0, 0, 0.5);
+					--ai-chat-code-bg: rgba(54, 54, 54, 0.75);
+					--ai-chat-idle-opacity: 0.55;
+				}
 
 			body[data-route="ai-chat"],
 			body[data-page-route="ai-chat"] {
@@ -243,34 +259,31 @@ erpnext_ai.pages.AIChat = class AIChat {
 				display: none;
 			}
 
-			.ai-chat-wrapper {
-				flex: 1;
-				min-height: 0;
-				display: flex;
-				flex-direction: column;
-				background: #232323;
-				border-radius: 22px;
-				border: 1px solid rgba(148, 163, 184, 0.18);
-				overflow: hidden;
-				position: relative;
-				box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04),
-					0 24px 60px rgba(15, 23, 42, 0.18);
-			}
+				.ai-chat-wrapper {
+					flex: 1;
+					min-height: 0;
+					display: flex;
+					flex-direction: column;
+					background: var(--ai-chat-panel);
+					border-radius: 22px;
+					border: 1px solid var(--ai-chat-border);
+					overflow: hidden;
+					position: relative;
+					box-shadow: var(--ai-chat-wrapper-shadow);
+					backdrop-filter: blur(10px);
+					-webkit-backdrop-filter: blur(10px);
+				}
 
-			.ai-chat-container.chat-active .ai-chat-wrapper {
-				height: 100%;
-				display: grid;
-				grid-template-rows: 1fr auto;
-			}
+				.ai-chat-container.chat-active .ai-chat-wrapper {
+					height: 100%;
+					display: grid;
+					grid-template-rows: auto 1fr auto;
+				}
 
-			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-wrapper {
-				border-color: #363636;
-			}
-
-			.ai-chat-feed {
-				flex: 1;
-				overflow-y: auto;
-				overflow-x: hidden;
+				.ai-chat-feed {
+					flex: 1;
+					overflow-y: auto;
+					overflow-x: hidden;
 				padding: 1.5rem 0 2rem;
 				display: flex;
 				flex-direction: column;
@@ -322,9 +335,9 @@ erpnext_ai.pages.AIChat = class AIChat {
 				filter: saturate(0.8) brightness(1.1);
 			}
 
-			.ai-chat-wrapper.is-idle .ai-chat-idle-layer video {
-				opacity: 0.7;
-			}
+				.ai-chat-wrapper.is-idle .ai-chat-idle-layer video {
+					opacity: var(--ai-chat-idle-opacity);
+				}
 
 			.ai-chat-feed::after {
 				content: "";
@@ -346,17 +359,13 @@ erpnext_ai.pages.AIChat = class AIChat {
 				animation: ai-chat-bubble-in 0.36s ease forwards;
 			}
 
-			.ai-chat-row {
-				display: flex;
-				align-items: flex-start;
-				gap: 1.25rem;
-				padding: 1.25rem 0;
-				border-bottom: 1px solid rgba(148, 163, 184, 0.2);
-			}
-
-			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-row {
-				border-color: rgba(54, 54, 54, 0.6);
-			}
+				.ai-chat-row {
+					display: flex;
+					align-items: flex-start;
+					gap: 1.25rem;
+					padding: 1.25rem 0;
+					border-bottom: 1px solid var(--ai-chat-divider);
+				}
 
 			.ai-chat-row:last-child {
 				border-bottom: none;
@@ -410,38 +419,52 @@ erpnext_ai.pages.AIChat = class AIChat {
 				letter-spacing: -0.03em;
 			}
 
-			.ai-chat-content {
-				flex: 1;
-				max-width: 100%;
-			}
+				.ai-chat-content {
+					flex: 1;
+					max-width: 100%;
+					display: flex;
+					flex-direction: column;
+					align-items: flex-start;
+					gap: 0.35rem;
+				}
 
 			.ai-chat-content.system {
 				text-align: center;
 			}
 
-			.ai-chat-bubble {
-				padding: 1.2rem 1.4rem;
-				border-radius: 24px;
-				font-size: 0.98rem;
-				line-height: 1.65;
-				max-width: 100%;
-				word-wrap: anywhere;
-				position: relative;
-				background: rgba(236, 238, 241, 0.46);
-				color: var(--ai-chat-text);
-				border: 1px solid rgba(15, 23, 42, 0.05);
-				box-shadow: none;
-				overflow: hidden;
-			}
+				.ai-chat-message.user .ai-chat-row {
+					flex-direction: row-reverse;
+				}
 
-			.ai-chat-bubble:hover {
-				transform: translateY(-1px);
-				box-shadow:
-					0 18px 46px rgba(17, 24, 39, 0.28),
-					inset 0 4px 11px rgba(255, 255, 255, 0.52),
-					inset 0 -9px 16px rgba(17, 24, 39, 0.2);
-				border-color: rgba(255, 255, 255, 0.3);
-			}
+				.ai-chat-message.user .ai-chat-content {
+					align-items: flex-end;
+				}
+
+				.ai-chat-message.system .ai-chat-content {
+					align-items: center;
+				}
+
+				.ai-chat-bubble {
+					padding: 1.2rem 1.4rem;
+					border-radius: 24px;
+					font-size: 0.98rem;
+					line-height: 1.65;
+					display: inline-block;
+					max-width: min(100%, 760px);
+					word-wrap: anywhere;
+					position: relative;
+					background: var(--ai-chat-assistant-bg);
+					color: var(--ai-chat-text);
+					border: 1px solid var(--ai-chat-bubble-border);
+					box-shadow: none;
+					overflow: hidden;
+					transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+				}
+
+				.ai-chat-bubble:hover {
+					transform: translateY(-1px);
+					box-shadow: var(--ai-chat-bubble-hover-shadow);
+				}
 
 			.ai-chat-bubble::before,
 			.ai-chat-bubble::after {
@@ -454,63 +477,40 @@ erpnext_ai.pages.AIChat = class AIChat {
 				display: none;
 			}
 
-			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-bubble {
-				background: rgba(26, 28, 32, 0.5);
-				border: 1px solid rgba(255, 255, 255, 0.03);
-				box-shadow: none;
-				color: rgba(236, 242, 255, 0.9);
-			}
-
-			.ai-chat-bubble.assistant {
-				background: rgba(236, 238, 241, 0.46);
-				border: 1px solid rgba(15, 23, 42, 0.05);
-				box-shadow: none;
-				color: rgba(15, 23, 42, 0.88);
-			}
+				.ai-chat-bubble.assistant {
+					background: var(--ai-chat-assistant-bg);
+					color: var(--ai-chat-text);
+				}
 
 			.ai-chat-bubble.assistant::before {
 				display: none;
 			}
 
-			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-bubble.assistant {
-				background: rgba(26, 28, 32, 0.5);
-				border: 1px solid rgba(255, 255, 255, 0.03);
-				color: rgba(236, 242, 255, 0.9);
-			}
-
-			.ai-chat-bubble.user {
-				background: rgba(240, 241, 244, 0.47);
-				border: 1px solid rgba(15, 23, 42, 0.05);
-				box-shadow: none;
-				color: rgba(28, 32, 46, 0.88);
-			}
+				.ai-chat-bubble.user {
+					background: var(--ai-chat-user-bg);
+					color: var(--ai-chat-user-text);
+				}
 
 			.ai-chat-bubble.user::before {
 				display: none;
 			}
 
-			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-bubble.user {
-				background: rgba(23, 24, 28, 0.5);
-				border: 1px solid rgba(255, 255, 255, 0.03);
-				color: rgba(236, 242, 255, 0.9);
-			}
+				.ai-chat-bubble.system {
+					background: transparent;
+					color: var(--ai-chat-muted);
+					padding: 0.75rem 0;
+				}
 
-			.ai-chat-bubble.system {
-				background: transparent;
-				color: var(--ai-chat-muted);
-				padding: 0.75rem 0;
-			}
-
-			.ai-chat-bubble.pending {
+				.ai-chat-bubble.pending {
 				min-width: 90px;
 				min-height: 46px;
 				display: inline-flex;
 				align-items: center;
 				justify-content: center;
 				padding: 0.75rem 1.2rem;
-				background: rgba(236, 238, 241, 0.32);
-				border: 1px solid rgba(15, 23, 42, 0.05);
-			}
+					background: var(--ai-chat-assistant-bg);
+					border: 1px solid var(--ai-chat-bubble-border);
+				}
 
 			.ai-chat-bubble.pending .typing-dots {
 				display: inline-flex;
@@ -613,19 +613,14 @@ erpnext_ai.pages.AIChat = class AIChat {
 				color: var(--ai-chat-text);
 			}
 
-			.ai-chat-context pre {
-				margin-top: 0.5rem;
-				padding: 1rem;
-				border-radius: 12px;
-				background: rgba(15, 23, 42, 0.04);
-				color: var(--ai-chat-text);
-				overflow-x: auto;
-			}
-
-			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-context pre {
-				background: rgba(54, 54, 54, 0.75);
-				color: #ffffff;
-			}
+				.ai-chat-context pre {
+					margin-top: 0.5rem;
+					padding: 1rem;
+					border-radius: 12px;
+					background: var(--ai-chat-code-bg);
+					color: var(--ai-chat-text);
+					overflow-x: auto;
+				}
 
 			.ai-chat-input {
 				padding: 1.05rem clamp(1rem, 3vw, 1.5rem) 1.3rem;
@@ -647,22 +642,16 @@ erpnext_ai.pages.AIChat = class AIChat {
 				padding: 0.9rem clamp(1rem, 3vw, 1.35rem) 1.1rem;
 			}
 
-			.ai-chat-input-shell {
-				background: rgba(20, 22, 26, 0.35);
-				border: 1px solid rgba(255, 255, 255, 0.05);
-				border-radius: 22px;
-				padding: 0.65rem clamp(1.35rem, 4vw, 2rem);
-				display: flex;
-				flex-direction: column;
-				gap: 0.75rem;
-				box-shadow: none;
-			}
-
-			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-input-shell {
-				box-shadow: none;
-				background: rgba(20, 22, 26, 0.35);
-				border-color: rgba(255, 255, 255, 0.06);
-			}
+				.ai-chat-input-shell {
+					background: var(--ai-chat-input-shell-bg);
+					border: 1px solid var(--ai-chat-input-border);
+					border-radius: 22px;
+					padding: 0.65rem clamp(1.35rem, 4vw, 2rem);
+					display: flex;
+					flex-direction: column;
+					gap: 0.75rem;
+					box-shadow: var(--ai-chat-input-shell-shadow);
+				}
 
 			.ai-chat-composer {
 				display: flex;
@@ -697,48 +686,50 @@ erpnext_ai.pages.AIChat = class AIChat {
 				box-shadow: none;
 			}
 
-			.ai-chat-composer .btn-send {
-				width: 44px;
-				height: 44px;
-				flex-shrink: 0;
-				border-radius: 14px;
-				display: inline-flex;
-				align-items: center;
-				justify-content: center;
-				padding: 0;
-				transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
-			}
+				.ai-chat-composer .btn-send {
+					width: 44px;
+					height: 44px;
+					flex-shrink: 0;
+					border-radius: 14px;
+					display: inline-flex;
+					align-items: center;
+					justify-content: center;
+					padding: 0;
+					background: var(--ai-chat-accent);
+					border: 1px solid var(--ai-chat-accent);
+					color: var(--ai-chat-button-text);
+					transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+				}
 
-			.ai-chat-composer .btn-send .ai-icon {
-				width: 18px;
-				height: 18px;
-			}
+				.ai-chat-composer .btn-send .ai-icon,
+				.ai-chat-composer .btn-send svg {
+					width: 18px;
+					height: 18px;
+					stroke: currentColor;
+					fill: none;
+					stroke-width: 2;
+					stroke-linecap: round;
+					stroke-linejoin: round;
+				}
 
-			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-composer .btn-send {
-				background: #363636;
-				border-color: #363636;
-				color: #ffffff;
-			}
+				.ai-chat-composer .btn-send:hover,
+				.ai-chat-composer .btn-send:focus {
+					background: var(--ai-chat-accent-hover);
+					border-color: var(--ai-chat-accent-hover);
+					transform: translateY(-1px);
+					box-shadow: 0 10px 24px rgba(58, 61, 66, 0.25);
+					outline: none;
+				}
 
-			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-composer .btn-send:hover,
-			html:is([data-theme="dark"], [data-theme-mode="dark"]) .ai-chat-composer .btn-send:focus {
-				box-shadow: 0 10px 24px rgba(22, 22, 22, 0.45);
-			}
-
-			.ai-chat-composer .btn-send:hover,
-			.ai-chat-composer .btn-send:focus {
-				transform: translateY(-1px);
-				box-shadow: 0 10px 24px rgba(58, 61, 66, 0.25);
-				outline: none;
-			}
-
-			.ai-chat-toolbar {
-				display: flex;
-				justify-content: flex-end;
-				align-items: center;
-				gap: 0.75rem;
-				margin-bottom: 0.5rem;
-			}
+				.ai-chat-toolbar {
+					display: flex;
+					justify-content: flex-end;
+					align-items: center;
+					gap: 0.75rem;
+					padding: 1.05rem 1.25rem 0.25rem;
+					margin: 0;
+					flex-shrink: 0;
+				}
 
 			.ai-chat-toolbar .btn-round {
 				width: 40px;
@@ -911,14 +902,18 @@ erpnext_ai.pages.AIChat = class AIChat {
 					justify-content: center;
 				}
 
-				.ai-chat-row {
-					flex-direction: column;
-				}
+					.ai-chat-row {
+						flex-direction: column;
+					}
 
-				.ai-chat-avatar {
-					width: 36px;
-					height: 36px;
-				}
+					.ai-chat-message.user .ai-chat-row {
+						flex-direction: column;
+					}
+
+					.ai-chat-avatar {
+						width: 36px;
+						height: 36px;
+					}
 
 				.ai-chat-row.system {
 					align-items: center;

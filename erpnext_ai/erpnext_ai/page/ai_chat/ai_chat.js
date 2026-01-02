@@ -38,28 +38,28 @@ erpnext_ai.pages.AIChat = class AIChat {
 
 	_buildLayout() {
 		const styles = `
-				:root {
-					--ai-chat-app-bg: #ececf1;
-					--ai-chat-feed-bg: #f7f7f8;
-					--ai-chat-panel: rgba(255, 255, 255, 0.92);
-					--ai-chat-border: #d0d7de;
-					--ai-chat-text: #1f2937;
-					--ai-chat-muted: #6b7280;
-					--ai-chat-assistant-bg: #f7f7f8;
-					--ai-chat-user-bg: #e5e7eb;
-					--ai-chat-user-text: #111827;
-					--ai-chat-shadow: 0 18px 40px -24px rgba(15, 23, 42, 0.35);
-					--ai-chat-input-bg: #ffffff;
-					--ai-chat-input-border: #d0d7de;
-					--ai-chat-accent: #1f272f;
-					--ai-chat-accent-hover: #13171d;
-					--ai-chat-button-text: #f8fafc;
-					--ai-chat-wrapper-shadow: 0 26px 70px rgba(15, 23, 42, 0.14);
-					--ai-chat-divider: rgba(148, 163, 184, 0.22);
-					--ai-chat-bubble-border: rgba(15, 23, 42, 0.06);
-					--ai-chat-bubble-hover-shadow: 0 18px 46px rgba(15, 23, 42, 0.14);
-					--ai-chat-input-shell-bg: rgba(255, 255, 255, 0.88);
-					--ai-chat-input-shell-shadow: 0 18px 44px -28px rgba(15, 23, 42, 0.22);
+					:root {
+						--ai-chat-app-bg: #ffffff;
+						--ai-chat-feed-bg: #ffffff;
+						--ai-chat-panel: rgba(255, 255, 255, 0.92);
+						--ai-chat-border: rgba(15, 23, 42, 0.08);
+						--ai-chat-text: #1f2937;
+						--ai-chat-muted: #6b7280;
+						--ai-chat-assistant-bg: #f7f7f8;
+						--ai-chat-user-bg: #e5e7eb;
+						--ai-chat-user-text: #111827;
+						--ai-chat-shadow: 0 18px 40px -24px rgba(15, 23, 42, 0.35);
+						--ai-chat-input-bg: #ffffff;
+						--ai-chat-input-border: rgba(15, 23, 42, 0.1);
+						--ai-chat-accent: #1f272f;
+						--ai-chat-accent-hover: #13171d;
+						--ai-chat-button-text: #f8fafc;
+						--ai-chat-wrapper-shadow: 0 26px 70px rgba(15, 23, 42, 0.14);
+						--ai-chat-divider: rgba(15, 23, 42, 0.08);
+						--ai-chat-bubble-border: rgba(15, 23, 42, 0.06);
+						--ai-chat-bubble-hover-shadow: 0 18px 46px rgba(15, 23, 42, 0.14);
+						--ai-chat-input-shell-bg: rgba(255, 255, 255, 0.88);
+						--ai-chat-input-shell-shadow: 0 18px 44px -28px rgba(15, 23, 42, 0.22);
 					--ai-chat-code-bg: rgba(15, 23, 42, 0.04);
 					--ai-chat-idle-opacity: 0.22;
 				}
